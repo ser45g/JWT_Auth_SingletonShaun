@@ -7,6 +7,12 @@ services:
     environment:
      
     - "ConnectionStrings__AppIdentityDbContext=User Id=postgres;Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=identitydb"
+    - "Authentication__AccessTokenSecret=${AUTHENTICATION_ACCESSTOKENSECRET}"
+    - "Authentication__RefreshTokenSecret=${AUTHENTICATION__REFRESHTOKENSECRET}"
+    - "Authentication__AccessTokenExpirationMinutes=30"
+    - "Authentication__RefreshTokenExpirationMinutes=43200"
+    - "Authentication__Issuer=https://localhost:8081"
+    - "Authentication__Audience=https://localhost:8081"
     depends_on:
       - identitydb
     ports:
