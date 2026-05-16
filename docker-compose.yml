@@ -1,0 +1,43 @@
+services:
+  myjwtauthservice:
+    image: ${DOCKER_REGISTRY-}myjwtauthservice
+    build:
+      context: MyJwtAuthService
+      dockerfile: Dockerfile
+    environment:
+     
+    - "ConnectionStrings__AppIdentityDbContext=User Id=postgres;Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=identitydb"
+    depends_on:
+      - identitydb
+    ports:
+      - 8081:8081
+
+  identitydb:
+    container_name: identitydb
+    image: postgres:latest
+    environment:
+      POSTGRES-DB: "identitydb"
+      POSTGRES_USER: ${IDENTITY_DB_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${IDENTITY_DB_POSTGRES_PASSWORD}
+    volumes:
+      - identity-data:/var/lib/postgresql
+ 
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "8082:80"
+    restart: always
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - identitydb
+volumes:
+  identity-data:
+    driver: local
+  pgadmin:
+    driver: local
+
