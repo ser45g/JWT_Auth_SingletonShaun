@@ -92,7 +92,7 @@ using (var scope = app.Services.CreateScope())
     using (context)
     {
         Console.WriteLine(app.Environment.ContentRootPath);
-        context.Database.Migrate();
+        await context.Database.MigrateAsync();
     }
 }
    
