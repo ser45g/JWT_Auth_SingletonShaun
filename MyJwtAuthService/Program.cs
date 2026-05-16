@@ -64,9 +64,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 
-builder.Services.AddAuthorization(options => {
-    
-});
+builder.Services.AddAuthorization(options => {});
 
 var app = builder.Build();
 
@@ -89,9 +87,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetService<AppIdentityDbContext>();
     ArgumentNullException.ThrowIfNull(context, nameof(context));
-    using (context)
-    {
-        Console.WriteLine(app.Environment.ContentRootPath);
+    using (context) {
         await context.Database.MigrateAsync();
     }
 }

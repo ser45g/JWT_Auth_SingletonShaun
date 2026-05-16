@@ -129,13 +129,7 @@ namespace MyJwtAuthService.Controllers
 
             return Ok(response);
         }
-        [Authorize(Roles = "Admin,User")]
-        [HttpGet("profile")]
-        public IActionResult Profile()
-        {
-            return Ok("Authorized endpoint \"profile\"");
-        }
-
+    
         [Authorize]
         [HttpDelete("logout")]
         public async Task<IActionResult> Logout()
