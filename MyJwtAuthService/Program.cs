@@ -1,14 +1,19 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MyJwtAuthService;
 using MyJwtAuthService.Data;
+using MyJwtAuthService.Exceptions;
+using MyJwtAuthService.Endpoints;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Requests;
 using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
+using MyJwtAuthService.Validators;
 using Scalar.AspNetCore;
 using System.Text;
 
@@ -27,11 +32,16 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
+
         string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
+
+builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
+builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
+builder.Services.AddScoped<IValidator<RefreshRequest>, RefreshRequestValidator>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(o =>
 {
@@ -45,7 +55,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     o.Lockout.MaxFailedAccessAttempts = 5;
     o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     
-}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>();
+}).AddRoles<Role>().AddEntityFrameworkStores<AppIdentityDbContext>();
 
 builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
 
@@ -83,7 +93,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateAudience = true,
         ClockSkew = TimeSpan.Zero
     };
-    
 });
 
 builder.Services.AddAuthorization(options => {});
@@ -105,8 +114,7 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
+app.AddAuthenticationEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -116,5 +124,5 @@ using (var scope = app.Services.CreateScope())
         await context.Database.MigrateAsync();
     }
 }
-   
+
 app.Run();
