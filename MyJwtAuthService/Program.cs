@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MyJwtAuthService;
 using MyJwtAuthService.Data;
+using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
@@ -50,6 +52,17 @@ builder.Services.AddScoped<Authenticator>();
 builder.Services.AddScoped<TokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
 
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = ctx =>
+    {
+        // Always include useful metadata
+        ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
+        ctx.ProblemDetails.Extensions["timestamp"] = DateTime.UtcNow;
+        ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
+    };
+});
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
     o.TokenValidationParameters = new TokenValidationParameters()
@@ -62,10 +75,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateAudience = true,
         ClockSkew = TimeSpan.Zero
     };
+    
 });
 
 builder.Services.AddAuthorization(options => {});
-
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -77,11 +91,14 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
 
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.UseStatusCodePages();
+
 
 using (var scope = app.Services.CreateScope())
 {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
@@ -42,7 +43,7 @@ namespace MyJwtAuthService.Controllers
 
             if (registerRequest.Password != registerRequest.ConfirmPassword)
             {
-                return BadRequest(new ErrorResponse("Password does not match confirm password."));
+                throw new BadRequestException("Password does not match confirm password.");
             }
 
             ApplicationUser registrationUser = new ApplicationUser()
@@ -59,11 +60,11 @@ namespace MyJwtAuthService.Controllers
                 
                 if(primaryError?.Code == nameof(errorDescriber.DuplicateEmail))
                 {
-                    return Conflict(new ErrorResponse("Email already exists."));
+                    throw new ConflictException("Email already exists.");
                 }
                 else if (primaryError?.Code == nameof(errorDescriber.DuplicateUserName))
                 {
-                    return Conflict(new ErrorResponse("Username already exists."));
+                    throw new ConflictException("Username already exists.");
                 }
             }
 
@@ -81,13 +82,13 @@ namespace MyJwtAuthService.Controllers
             ApplicationUser? user = await _userRepository.FindByNameAsync(loginRequest.Username);
             if(user == null)
             {
-                return Unauthorized();
+                throw new UnathorizedException();
             }
 
             bool isCorrectPassword = await _userRepository.CheckPasswordAsync(user, loginRequest.Password);
             if(!isCorrectPassword)
             {
-                return Unauthorized();
+                throw new UnathorizedException();
             }
 
             AuthenticatedUserResponse response = await _authenticator.Authenticate(user);
@@ -108,13 +109,13 @@ namespace MyJwtAuthService.Controllers
             bool isValidRefreshToken = _refreshTokenValidator.Validate(refreshRequest.RefreshToken);
             if(!isValidRefreshToken)
             {
-                return BadRequest(new ErrorResponse("Invalid refresh token."));
+                throw new BadRequestException("Invalid refresh token.");
             }
 
             RefreshToken? refreshTokenDTO = await _refreshTokenRepository.GetByToken(refreshRequest.RefreshToken);
             if(refreshTokenDTO == null)
             {
-                return NotFound(new ErrorResponse("Invalid refresh token."));
+                throw new NotFoundException("Invalid refresh token.");
             }
 
             await _refreshTokenRepository.Delete(refreshTokenDTO.Id);
@@ -122,7 +123,7 @@ namespace MyJwtAuthService.Controllers
             ApplicationUser? user = await _userRepository.FindByIdAsync(refreshTokenDTO.UserId.ToString());
             if(user == null)
             {
-                return NotFound(new ErrorResponse("User not found."));
+                throw new NotFoundException("User not found.");
             }
 
             AuthenticatedUserResponse response = await _authenticator.Authenticate(user);
@@ -138,7 +139,7 @@ namespace MyJwtAuthService.Controllers
 
             if(!Guid.TryParse(rawUserId, out Guid userId))
             {
-                return Unauthorized();
+                throw new UnathorizedException();
             }
 
             await _refreshTokenRepository.DeleteAll(userId);
