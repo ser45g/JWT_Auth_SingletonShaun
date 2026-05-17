@@ -23,8 +23,11 @@ namespace MyJwtAuthService.Data
                 }
             }).UseSeeding((context,_) =>
             {
-                context.Set<Role>().AddRange(roles);
-                context.SaveChanges();
+                if (!context.Set<Role>().Any())
+                {
+                    context.Set<Role>().AddRange(roles);
+                    context.SaveChanges();
+                }
             });
         }
 
