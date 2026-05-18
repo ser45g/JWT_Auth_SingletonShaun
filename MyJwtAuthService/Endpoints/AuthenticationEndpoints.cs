@@ -1,7 +1,10 @@
 ﻿using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MyJwtAuthService.Exceptions;
+using MyJwtAuthService.Extensions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
@@ -9,6 +12,7 @@ using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenValidators;
 using System.Security.Claims;
+using ValidationException = MyJwtAuthService.Exceptions.ValidationException;
 
 namespace MyJwtAuthService.Endpoints
 {
@@ -18,16 +22,16 @@ namespace MyJwtAuthService.Endpoints
         {
             var authGroup = app.MapGroup("auth");
 
-            authGroup.MapPost("/register", async Task<Results<Ok, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> ([FromBody] RegisterRequest registerRequest, UserManager<ApplicationUser> userRepository, IValidator<RegisterRequest> validator) => {
+            authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager<ApplicationUser> userRepository, IValidator<RegisterRequest> validator) => {
                 var validationResult = validator.Validate(registerRequest);
                 if (!validationResult.IsValid)
                 {
-                    return TypedResults.BadRequest(new ErrorResponse(validationResult.Errors.Select(x => x.ErrorMessage)));
+                    throw new ValidationException(validationResult.GetValidationErrors());
                 }
 
                 if (registerRequest.Password != registerRequest.ConfirmPassword)
                 {
-                    return TypedResults.BadRequest(new ErrorResponse("Password does not match confirm password."));
+                    throw new BadRequestException("Password does not match confirm password.");
                 }
 
                 ApplicationUser registrationUser = new ApplicationUser()
@@ -44,11 +48,11 @@ namespace MyJwtAuthService.Endpoints
 
                     if (primaryError?.Code == nameof(errorDescriber.DuplicateEmail))
                     {
-                        return TypedResults.Conflict(new ErrorResponse("Email already exists."));
+                        throw new ConflictException("Email already exists.");
                     }
                     else if (primaryError?.Code == nameof(errorDescriber.DuplicateUserName))
                     {
-                        return TypedResults.Conflict(new ErrorResponse("Username already exists."));
+                        throw new ConflictException("Username already exists.");
                     }
                 }
 
@@ -56,26 +60,27 @@ namespace MyJwtAuthService.Endpoints
 
             });
 
-            authGroup.MapPost("/login", async Task<Results<Ok<AuthenticatedUserResponse>, BadRequest<ErrorResponse>, UnauthorizedHttpResult>> ([FromBody] LoginRequest loginRequest,
+            authGroup.MapPost("/login", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] LoginRequest loginRequest,
                 UserManager<ApplicationUser> userRepository,
                 Authenticator authenticator,
                 IValidator<LoginRequest> validator) => {
-                var validationResult = validator.Validate(loginRequest);
+
+                ValidationResult validationResult = validator.Validate(loginRequest);
                 if (!validationResult.IsValid)
-                {
-                    return TypedResults.BadRequest(new ErrorResponse(validationResult.Errors.Select(x => x.ErrorMessage)));
+                {             
+                    throw new ValidationException(validationResult.GetValidationErrors());
                 }
 
                 ApplicationUser? user = await userRepository.FindByNameAsync(loginRequest.Username);
                 if (user == null)
                 {
-                    return TypedResults.Unauthorized();
+                    throw new UnathorizedException();
                 }
 
                 bool isCorrectPassword = await userRepository.CheckPasswordAsync(user, loginRequest.Password);
                 if (!isCorrectPassword)
                 {
-                    return TypedResults.Unauthorized();
+                    throw new UnathorizedException();
                 }
 
                 AuthenticatedUserResponse response = await authenticator.Authenticate(user);
@@ -83,7 +88,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok<AuthenticatedUserResponse>(response);
             });
 
-            authGroup.MapPost("/refresh", async Task<Results<Ok<AuthenticatedUserResponse>, BadRequest<ErrorResponse>, NotFound<ErrorResponse>>> ([FromBody] RefreshRequest refreshRequest,
+            authGroup.MapPost("/refresh", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] RefreshRequest refreshRequest,
                 RefreshTokenValidator refreshTokenValidator,
                 IRefreshTokenRepository refreshTokenRepository,
                 UserManager<ApplicationUser> userRepository,
@@ -92,19 +97,19 @@ namespace MyJwtAuthService.Endpoints
                 var validationResult = validator.Validate(refreshRequest);
                 if (!validationResult.IsValid)
                 {
-                    return TypedResults.BadRequest(new ErrorResponse(validationResult.Errors.Select(x=>x.ErrorMessage)));
+                    throw new ValidationException(validationResult.GetValidationErrors());
                 }
                 
                 bool isValidRefreshToken = refreshTokenValidator.Validate(refreshRequest.RefreshToken);
                 if (!isValidRefreshToken)
                 {
-                    return TypedResults.BadRequest(new ErrorResponse("Invalid refresh token."));
+                    throw new BadRequestException("Invalid refresh token.");
                 }
 
                 RefreshToken? refreshTokenDTO = await refreshTokenRepository.GetByToken(refreshRequest.RefreshToken);
                 if (refreshTokenDTO == null)
                 {
-                    return TypedResults.NotFound(new ErrorResponse("Invalid refresh token."));
+                    throw new NotFoundException("Invalid refresh token.");
                 }
 
                 await refreshTokenRepository.Delete(refreshTokenDTO.Id);
@@ -112,7 +117,7 @@ namespace MyJwtAuthService.Endpoints
                 ApplicationUser? user = await userRepository.FindByIdAsync(refreshTokenDTO.UserId.ToString());
                 if (user == null)
                 {
-                    return TypedResults.NotFound(new ErrorResponse("User not found."));
+                    throw new NotFoundException("User not found.");
                 }
 
                 AuthenticatedUserResponse response = await authenticator.Authenticate(user);
@@ -120,13 +125,12 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok(response);
             });
 
-            authGroup.MapDelete("/logout", async Task<Results<NoContent, UnauthorizedHttpResult>> (HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository) =>
-            {
+            authGroup.MapDelete("/logout", async Task<NoContent> (HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository) => {
                 string? rawUserId = httpContext.User.FindFirstValue("id");
 
                 if (!Guid.TryParse(rawUserId, out Guid userId))
                 {
-                    return TypedResults.Unauthorized();
+                    throw new UnathorizedException();
                 }
 
                 await refreshTokenRepository.DeleteAll(userId);
