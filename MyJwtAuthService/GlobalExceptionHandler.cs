@@ -11,7 +11,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         logger.LogError(exception, "Unhandled exception occurred. TraceId: {TraceId}",
             httpContext.TraceIdentifier);
 
-        var (statusCode, title) = MapException(exception);
+        var (statusCode, title, errors) = MapException(exception);
 
         httpContext.Response.StatusCode = statusCode;
 
@@ -27,6 +27,10 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
         problemDetails.Extensions["timestamp"] = DateTime.UtcNow;
 
+        if (errors != null) {
+            problemDetails.Extensions["errors"] = errors;
+        }
+
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
@@ -34,12 +38,13 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         });
     }
 
-    private static (int StatusCode, string Title) MapException(Exception exception) => exception switch
+    private static (int StatusCode, string Title, IDictionary<string, string[]>? Errors) MapException(Exception exception) => exception switch
     {
-        AppException appEx => ((int)appEx.StatusCode, appEx.Message),
-        ArgumentNullException => (StatusCodes.Status400BadRequest, "Invalid argument provided"),
-        ArgumentException => (StatusCodes.Status400BadRequest, "Invalid argument provided"),
-        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
+        ValidationException validationException => ((int)validationException.StatusCode, validationException.Message, validationException.Errors),
+        AppException appEx => ((int)appEx.StatusCode, appEx.Message, null),
+        ArgumentNullException => (StatusCodes.Status400BadRequest, "Invalid argument provided", null),
+        ArgumentException => (StatusCodes.Status400BadRequest, "Invalid argument provided", null),
+        _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred", null)
     };
 
     private static string GetProblemType(int statusCode) => statusCode switch
