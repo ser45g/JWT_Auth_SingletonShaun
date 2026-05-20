@@ -5,11 +5,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService;
 using MyJwtAuthService.Data;
-using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Endpoints;
+using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Services.Authenticators;
+using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
@@ -70,6 +71,12 @@ builder.Services.AddScoped<RefreshTokenValidator>();
 builder.Services.AddScoped<Authenticator>();
 builder.Services.AddScoped<TokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailSender<ApplicationUser>, EmailSender>();
+
+
+builder.Services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
+
 
 builder.Services.AddProblemDetails(options =>
 {
