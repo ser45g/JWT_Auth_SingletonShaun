@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using MyJwtAuthService;
 using MyJwtAuthService.Data;
-using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
@@ -23,11 +21,15 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+builder.Services.AddOptions<CorsConfiguration>().Bind(builder.Configuration.GetSection("Cors")).ValidateDataAnnotations().ValidateOnStart();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5174").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
 
