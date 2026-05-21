@@ -13,10 +13,18 @@ services:
     - "Authentication__RefreshTokenExpirationMinutes=43200"
     - "Authentication__Issuer=https://localhost:8081"
     - "Authentication__Audience=https://localhost:8081"
+    - "MailSettings__DisplayName=MyJwtAuthService"
+    - "MailSettings__From=sergey1pes@gmail.com"
+    - MailSettings__Host=papercut
+    - "MailSettings__Port=2525"
+    - "MailSettings__UserName=user1"
+    - "MailSettings__Password=user1"
+    - MailSettings__IsAuthenticated=false
     - Cors__AllowedOrigins__0=http://localhost:5173
     - Cors__AllowedOrigins__1=http://localhost:5174
     depends_on:
       - identitydb
+      - papercut
     ports:
       - 8081:8081
 
@@ -29,7 +37,11 @@ services:
       POSTGRES_PASSWORD: ${IDENTITY_DB_POSTGRES_PASSWORD}
     volumes:
       - identity-data:/var/lib/postgresql
- 
+  papercut:
+    image: changemakerstudiosus/papercut-smtp:latest
+    container_name: papercut_smtp
+    ports:
+      - "8093:8080"
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4:latest

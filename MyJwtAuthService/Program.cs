@@ -122,6 +122,8 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+
 app.AddAuthenticationEndpoints();
 
 using (var scope = app.Services.CreateScope())

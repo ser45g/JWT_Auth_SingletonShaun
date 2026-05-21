@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using MailKit.Net.Smtp;
+using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace MyJwtAuthService.Services.EmailSenders
