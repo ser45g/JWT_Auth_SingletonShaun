@@ -2,7 +2,6 @@
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using MyJwtAuthService.Data;
 using Microsoft.AspNetCore.WebUtilities;
@@ -12,23 +11,18 @@ using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
 using MyJwtAuthService.Services.Authenticators;
-using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenValidators;
-using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Timers;
-using static Org.BouncyCastle.Crypto.Engines.SM2Engine;
 using ValidationException = MyJwtAuthService.Exceptions.ValidationException;
 
 namespace MyJwtAuthService.Endpoints
 {
     public static class AuthenticationEndpoints
     {
-        public static IEndpointRouteBuilder AddAuthenticationEndpoints(this IEndpointRouteBuilder app)
-        {
+        public static IEndpointRouteBuilder AddAuthenticationEndpoints(this IEndpointRouteBuilder app, string confirmEmailEndpointName="confirmEmail") {
             var authGroup = app.MapGroup("auth");
 
             authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager <ApplicationUser> userRepository,  IEmailSender<ApplicationUser> emailSender, IValidator<RegisterRequest> validator, HttpContext context, LinkGenerator linkGenerator) => {
@@ -44,7 +38,6 @@ namespace MyJwtAuthService.Endpoints
                 {
                     throw new ValidationException(validationResult.GetValidationErrors());
                 }
-
                 if (registerRequest.Password != registerRequest.ConfirmPassword)
                 {
                     throw new BadRequestException("Password does not match confirm password.");
@@ -71,7 +64,7 @@ namespace MyJwtAuthService.Endpoints
                         throw new ConflictException("Username already exists.");
                     }
                 }
-                await SendConfirmationEmailAsync(registrationUser, userRepository, context, registerRequest.Email, "confirmEmail", linkGenerator, emailSender);
+                await SendConfirmationEmailAsync(registrationUser, userRepository, context, registerRequest.Email, confirmEmailEndpointName, linkGenerator, emailSender);
 
                 return TypedResults.Ok();
 
@@ -116,8 +109,7 @@ namespace MyJwtAuthService.Endpoints
             }).WithName("login").WithDescription("Allows users to sign in to their account by their Username and Password");
 
             authGroup.MapPost("/refresh", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] RefreshRequest refreshRequest,
-                RefreshTokenValidator refreshTokenValidator, IRefreshTokenRepository refreshTokenRepository, UserManager<ApplicationUser> userRepository, Authenticator authenticator, IValidator<RefreshRequest> validator) =>
-            {
+                RefreshTokenValidator refreshTokenValidator, IRefreshTokenRepository refreshTokenRepository, UserManager<ApplicationUser> userRepository, Authenticator authenticator, IValidator<RefreshRequest> validator) => {
 
                 var validationResult = validator.Validate(refreshRequest);
                 if (!validationResult.IsValid)
@@ -155,6 +147,7 @@ namespace MyJwtAuthService.Endpoints
 
                 return TypedResults.Ok(response);
             }).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
+
             authGroup.MapPost("/resendConfirmationEmail", async (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, LinkGenerator linkGenerator) => {
                 ApplicationUser? val = await userManager.FindByEmailAsync(resendRequest.Email);
                 if (val == null)
@@ -162,7 +155,7 @@ namespace MyJwtAuthService.Endpoints
                     return TypedResults.Ok();
                 }
 
-                await SendConfirmationEmailAsync(val, userManager, context, resendRequest.Email, "confirmEmail", linkGenerator, emailSender);
+                await SendConfirmationEmailAsync(val, userManager, context, resendRequest.Email, confirmEmailEndpointName, linkGenerator, emailSender);
                 return TypedResults.Ok();
             }).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
 
@@ -218,7 +211,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
-            authGroup.MapGet("/confirmEmail", async ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager) =>
+            authGroup.MapGet($"/{confirmEmailEndpointName}", async ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager) =>
             {
                 ApplicationUser? user = await userManager.FindByIdAsync(userId);
                 if (user == null)
@@ -250,7 +243,7 @@ namespace MyJwtAuthService.Endpoints
                 }
 
                 return (!identityResult.Succeeded) ? ((Results<ContentHttpResult, UnauthorizedHttpResult>)TypedResults.Unauthorized()) : ((Results<ContentHttpResult, UnauthorizedHttpResult>)TypedResults.Text("Thank you for confirming your email."));
-            }).WithName("confirmEmail").WithDescription("After recieving a confirmation email, you must follow the link which leads here. That way a user confirms their email address.");
+            }).WithName(confirmEmailEndpointName).WithDescription("After recieving a confirmation email, you must follow the link which leads here. That way a user confirms their email address.");
 
 
             authGroup.MapDelete("/logout", async Task<NoContent> (HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository) => {
@@ -286,7 +279,6 @@ namespace MyJwtAuthService.Endpoints
             }).RequireAuthorization();
 
             return authGroup;
-
         }
 
         public static async Task SendConfirmationEmailAsync(ApplicationUser user, UserManager<ApplicationUser> userManager, HttpContext context, string email, string confirmEmailEndpointName, LinkGenerator linkGenerator, IEmailSender<ApplicationUser> emailSender, bool isChange = false)
