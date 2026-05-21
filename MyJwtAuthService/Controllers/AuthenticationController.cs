@@ -21,16 +21,19 @@ namespace MyJwtAuthService.Controllers
         private readonly Authenticator _authenticator;
         private readonly RefreshTokenValidator _refreshTokenValidator;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AuthenticationController(UserManager<ApplicationUser> userRepository, 
+        public AuthenticationController(UserManager<ApplicationUser> userRepository,
             Authenticator authenticator,
             RefreshTokenValidator refreshTokenValidator,
-            IRefreshTokenRepository refreshTokenRepository)
+            IRefreshTokenRepository refreshTokenRepository,
+            SignInManager<ApplicationUser> signInManager)
         {
             _userRepository = userRepository;
             _authenticator = authenticator;
             _refreshTokenValidator = refreshTokenValidator;
             _refreshTokenRepository = refreshTokenRepository;
+            _signInManager = signInManager;
         }
 
         [HttpPost("register")]
@@ -85,8 +88,16 @@ namespace MyJwtAuthService.Controllers
                 throw new UnathorizedException();
             }
 
-            bool isCorrectPassword = await _userRepository.CheckPasswordAsync(user, loginRequest.Password);
-            if(!isCorrectPassword)
+            
+            var signInResult = await _signInManager.CheckPasswordSignInAsync(user, loginRequest.Password, true);
+
+            if (signInResult.IsLockedOut)
+            {
+                var lockoutExpireDate = await _userRepository.GetLockoutEndDateAsync(user);
+                throw new UnathorizedException(lockoutExpireDate.HasValue && lockoutExpireDate.Value >= DateTimeOffset.Now? $"You've been locked out. Time left: {(lockoutExpireDate-DateTimeOffset.UtcNow)?.ToString(@"hh\:mm\:ss")}.": "You've been locked out.");
+            }
+
+            if (!signInResult.Succeeded)
             {
                 throw new UnathorizedException();
             }

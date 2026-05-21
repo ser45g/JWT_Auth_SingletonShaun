@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -42,7 +43,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     o.Lockout.MaxFailedAccessAttempts = 5;
     o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     
-}).AddRoles<Role>().AddEntityFrameworkStores<AppIdentityDbContext>();
+}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>();
 
 builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
 
