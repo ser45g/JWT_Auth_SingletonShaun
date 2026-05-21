@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService;
 using MyJwtAuthService.Data;
@@ -32,18 +33,22 @@ builder.Services.AddCors(options =>
 builder.Services.AddIdentityCore<ApplicationUser>(o =>
 {
     o.User.RequireUniqueEmail = true;
-    o.Password.RequireDigit = false;
-    o.Password.RequireNonAlphanumeric = false;
-    o.Password.RequireUppercase = false;
-    o.Password.RequiredLength = 0;
+
+    o.Password.RequireDigit = true;
+    o.Password.RequireNonAlphanumeric = true;
+    o.Password.RequireUppercase = true;
+    o.Password.RequiredLength = 8;
+
+    o.Lockout.MaxFailedAccessAttempts = 5;
+    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+    
 }).AddRoles<Role>().AddEntityFrameworkStores<AppIdentityDbContext>();
 
-var authenticationConfiguration = builder.Configuration.GetSection("Authentication")
-            .Get<AuthenticationConfiguration>();
+builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
 
-ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authenticationConfiguration));
+builder.Services.AddScoped<AuthenticationConfiguration>(s=>s.GetRequiredService<IOptions<AuthenticationConfiguration>>().Value);
 
-builder.Services.AddSingleton(authenticationConfiguration);
+var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationConfiguration>();
 
 builder.Services.AddScoped<AccessTokenGenerator>();
 builder.Services.AddScoped<RefreshTokenGenerator>();
