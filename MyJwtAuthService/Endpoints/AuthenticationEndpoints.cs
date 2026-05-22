@@ -3,6 +3,7 @@ using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
 using MyJwtAuthService.Models;
@@ -139,6 +140,25 @@ namespace MyJwtAuthService.Endpoints
                 }
 
                 await refreshTokenRepository.DeleteAll(userId);
+
+                return TypedResults.NoContent();
+            }).RequireAuthorization();
+
+            authGroup.MapDelete("/delete-account", async Task<NoContent> (UserManager<ApplicationUser> userManager, HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository, AppIdentityDbContext dbContext) =>
+            {
+                string? rawUserId = httpContext.User.FindFirstValue("id");
+
+                if (!Guid.TryParse(rawUserId, out Guid userId))
+                {
+                    throw new UnathorizedException();
+                }
+                ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                {
+                    throw new NotFoundException("User not found.");
+                }
+
+                await userManager.DeleteAsync(user);
 
                 return TypedResults.NoContent();
             }).RequireAuthorization();

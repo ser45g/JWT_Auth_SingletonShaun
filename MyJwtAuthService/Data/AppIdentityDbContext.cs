@@ -34,6 +34,8 @@ namespace MyJwtAuthService.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<RefreshToken>().HasOne(r => r.User).WithMany(u => u.RefreshTokens).IsRequired().OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
