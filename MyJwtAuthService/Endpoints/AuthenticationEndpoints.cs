@@ -148,7 +148,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok(response);
             }).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
 
-            authGroup.MapPost("/resendConfirmationEmail", async (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, LinkGenerator linkGenerator) => {
+            authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, LinkGenerator linkGenerator) => {
                 ApplicationUser? val = await userManager.FindByEmailAsync(resendRequest.Email);
                 if (val == null)
                 {
@@ -159,7 +159,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
 
-            authGroup.MapPost("/forgotPassword", async (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender) =>
+            authGroup.MapPost("/forgotPassword", async Task<Ok> (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender) =>
             {
                 ApplicationUser? user = await userManager.FindByEmailAsync(forgotPasswordRequest.Email);
                 bool flag = user != null;
@@ -178,7 +178,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("forgotPassword").WithDescription("Allows you to restore the access to your account. You get an email, in which you get a reset token. Then you need to pass that token to the reset password endpoint.");
 
-            authGroup.MapPost("/resetPassword", async (ResetPasswordRequest resetRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender) =>
+            authGroup.MapPost("/resetPassword", async Task<Ok> (ResetPasswordRequest resetRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender) =>
             {
 
                 ApplicationUser? user = await userManager.FindByEmailAsync(resetRequest.Email);
@@ -211,12 +211,12 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
-            authGroup.MapGet($"/{confirmEmailEndpointName}", async ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager) =>
+            authGroup.MapGet($"/{confirmEmailEndpointName}", async Task<ContentHttpResult> ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager) =>
             {
                 ApplicationUser? user = await userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return TypedResults.Unauthorized();
+                    throw new UnathorizedException();
                 }
 
                 try
@@ -225,7 +225,7 @@ namespace MyJwtAuthService.Endpoints
                 }
                 catch (FormatException)
                 {
-                    return TypedResults.Unauthorized();
+                    throw new UnathorizedException();
                 }
 
                 IdentityResult identityResult;
@@ -241,8 +241,12 @@ namespace MyJwtAuthService.Endpoints
                         identityResult = await userManager.SetUserNameAsync(user, changedEmail);
                     }
                 }
+                if (!identityResult.Succeeded) {
+                    throw new UnathorizedException();
+                }
 
-                return (!identityResult.Succeeded) ? ((Results<ContentHttpResult, UnauthorizedHttpResult>)TypedResults.Unauthorized()) : ((Results<ContentHttpResult, UnauthorizedHttpResult>)TypedResults.Text("Thank you for confirming your email."));
+                return TypedResults.Text("Thank you for confirming your email.");
+
             }).WithName(confirmEmailEndpointName).WithDescription("After recieving a confirmation email, you must follow the link which leads here. That way a user confirms their email address.");
 
 
