@@ -16,6 +16,7 @@ using MyJwtAuthService.Services.TokenValidators;
 using MyJwtAuthService.Validators;
 using Scalar.AspNetCore;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +56,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     o.Lockout.MaxFailedAccessAttempts = 5;
     o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     
-}).AddRoles<Role>().AddEntityFrameworkStores<AppIdentityDbContext>();
+}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>();
 
 builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
 

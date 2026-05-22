@@ -61,10 +61,8 @@ namespace MyJwtAuthService.Endpoints
             });
 
             authGroup.MapPost("/login", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] LoginRequest loginRequest,
-                UserManager<ApplicationUser> userRepository,
-                Authenticator authenticator,
-                IValidator<LoginRequest> validator) => {
-
+                UserManager<ApplicationUser> userRepository, Authenticator authenticator, SignInManager<ApplicationUser> signInManager, IValidator<LoginRequest> validator) =>
+            {
                 ValidationResult validationResult = validator.Validate(loginRequest);
                 if (!validationResult.IsValid)
                 {             
@@ -77,8 +75,15 @@ namespace MyJwtAuthService.Endpoints
                     throw new UnathorizedException();
                 }
 
-                bool isCorrectPassword = await userRepository.CheckPasswordAsync(user, loginRequest.Password);
-                if (!isCorrectPassword)
+                var signInResult = await signInManager.CheckPasswordSignInAsync(user, loginRequest.Password, true);
+
+                if (signInResult.IsLockedOut)
+                {
+                    var lockoutExpireDate = await userRepository.GetLockoutEndDateAsync(user);
+                    throw new UnathorizedException(lockoutExpireDate.HasValue && lockoutExpireDate.Value >= DateTimeOffset.Now ? $"You've been locked out. Time left: {(lockoutExpireDate - DateTimeOffset.UtcNow)?.ToString(@"hh\:mm\:ss")}." : "You've been locked out.");
+                }
+
+                if (!signInResult.Succeeded)
                 {
                     throw new UnathorizedException();
                 }
