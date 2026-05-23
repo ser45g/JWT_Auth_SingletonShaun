@@ -11,6 +11,7 @@ using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
 using MyJwtAuthService.Services.Authenticators;
+using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenValidators;
 using System.ComponentModel.DataAnnotations;
@@ -26,7 +27,7 @@ namespace MyJwtAuthService.Endpoints
         public static IEndpointRouteBuilder AddAuthenticationEndpoints(this IEndpointRouteBuilder app, string confirmEmailEndpointName="confirmEmail") {
             var authGroup = app.MapGroup("auth");
 
-            authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager <ApplicationUser> userRepository,  IEmailSender<ApplicationUser> emailSender, IValidator<RegisterRequest> validator, HttpContext context, LinkGenerator linkGenerator) => {
+            authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager <ApplicationUser> userRepository, HttpContext context,  IConfirmationLinkEmailSender confirmationEmailSender, IValidator<RegisterRequest> validator) => {
 
                 if (!userRepository.SupportsUserEmail)
                 {
@@ -61,7 +62,7 @@ namespace MyJwtAuthService.Endpoints
                         throw new ConflictException("Username already exists.");
                     }
                 }
-                await SendConfirmationEmailAsync(registrationUser, userRepository, context, registerRequest.Email, confirmEmailEndpointName, linkGenerator, emailSender);
+                await confirmationEmailSender.SendConfirmationEmailAsync(registrationUser,registerRequest.Email, context, confirmEmailEndpointName);
 
                 return TypedResults.Ok();
 
@@ -145,7 +146,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok(response);
             }).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
 
-            authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, LinkGenerator linkGenerator, IValidator<ResendRequest> validator) => {
+            authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IConfirmationLinkEmailSender confirmationEmailSender, IValidator<ResendRequest> validator) => {
 
                 var validationResult = validator.Validate(resendRequest);
                 if (!validationResult.IsValid)
@@ -153,14 +154,13 @@ namespace MyJwtAuthService.Endpoints
                     throw new ValidationException(validationResult.GetValidationErrors());
                 }
 
-                ApplicationUser? val = await userManager.FindByEmailAsync(resendRequest.Email);
-                if (val == null)
+                ApplicationUser? user = await userManager.FindByEmailAsync(resendRequest.Email);
+                if (user != null)
                 {
-                    return TypedResults.Ok();
+                    await confirmationEmailSender.SendConfirmationEmailAsync(user, resendRequest.Email, context, confirmEmailEndpointName);
                 }
-
-                await SendConfirmationEmailAsync(val, userManager, context, resendRequest.Email, confirmEmailEndpointName, linkGenerator, emailSender);
                 return TypedResults.Ok();
+
             }).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
 
             authGroup.MapPost("/forgotPassword", async Task<Ok> (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, IValidator<ForgotPasswordRequest> validator) => {
@@ -190,7 +190,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("forgotPassword").WithDescription("Allows you to restore the access to your account. You get an email, in which you get a reset token. Then you need to pass that token to the reset password endpoint.");
 
-            authGroup.MapPost("/resetPassword", async Task<Ok> (ResetPasswordRequest resetRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, IValidator<ResetPasswordRequest> validator) => {
+            authGroup.MapPost("/resetPassword", async Task<Ok> (ResetPasswordRequest resetRequest, UserManager<ApplicationUser> userManager, IValidator<ResetPasswordRequest> validator) => {
 
                 var validationResult = validator.Validate(resetRequest);
                 if (!validationResult.IsValid)
@@ -280,7 +280,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.NoContent();
             }).RequireAuthorization().WithName("logout").WithDescription("Allows users to log out of their account.");
 
-            authGroup.MapDelete("/delete-account", async Task<NoContent> (UserManager<ApplicationUser> userManager, HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository, AppIdentityDbContext dbContext) =>
+            authGroup.MapDelete("/delete-account", async Task<NoContent> (UserManager<ApplicationUser> userManager, HttpContext httpContext) =>
             {
                 string? rawUserId = httpContext.User.FindFirstValue("id");
 
@@ -302,30 +302,7 @@ namespace MyJwtAuthService.Endpoints
             return authGroup;
         }
 
-        public static async Task SendConfirmationEmailAsync(ApplicationUser user, UserManager<ApplicationUser> userManager, HttpContext context, string email, string confirmEmailEndpointName, LinkGenerator linkGenerator, IEmailSender<ApplicationUser> emailSender, bool isChange = false)
-        {
-            if (confirmEmailEndpointName == null)
-            {
-                throw new NotSupportedException("No email confirmation endpoint was registered!");
-            }
-
-            string text = ((!isChange) ? (await userManager.GenerateEmailConfirmationTokenAsync(user)) : (await userManager.GenerateChangeEmailTokenAsync(user, email)));
-            string code = text;
-            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-            string value = await userManager.GetUserIdAsync(user);
-            RouteValueDictionary routeValueDictionary = new RouteValueDictionary
-            {
-                ["userId"] = value,
-                ["code"] = code
-            };
-            if (isChange)
-            {
-                routeValueDictionary.Add("changedEmail", email);
-            }
-
-            string value2 = linkGenerator.GetUriByName(context, confirmEmailEndpointName, routeValueDictionary) ?? throw new NotSupportedException("Could not find endpoint named '" + confirmEmailEndpointName + "'.");
-            await emailSender.SendConfirmationLinkAsync(user, email, HtmlEncoder.Default.Encode(value2));
-        }
+       
     }
 }
 

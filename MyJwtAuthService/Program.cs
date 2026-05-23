@@ -3,18 +3,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using MyJwtAuthService;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
-using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Models;
-using MyJwtAuthService.Requests;
 using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
-using MyJwtAuthService.Validators;
 using Scalar.AspNetCore;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
@@ -34,7 +30,6 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-
         string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
@@ -71,10 +66,9 @@ builder.Services.AddScoped<TokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailSender<ApplicationUser>, EmailSender>();
-
+builder.Services.AddScoped<IConfirmationLinkEmailSender, ConfirmationLinkEmailSender>();
 
 builder.Services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
-
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -119,8 +113,6 @@ app.UseStatusCodePages();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-
 
 app.AddAuthenticationEndpoints();
 
