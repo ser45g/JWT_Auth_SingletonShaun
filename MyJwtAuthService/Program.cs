@@ -41,9 +41,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
-builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
-builder.Services.AddScoped<IValidator<RefreshRequest>, RefreshRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.AddIdentityCore<ApplicationUser>(o =>
 {
