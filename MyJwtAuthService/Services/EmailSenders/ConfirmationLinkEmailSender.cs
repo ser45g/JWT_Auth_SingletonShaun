@@ -26,9 +26,7 @@ namespace MyJwtAuthService.Services.EmailSenders
                 throw new NotSupportedException("No email confirmation endpoint was registered!");
             }
 
-            
-
-            string text = ((!isEmailChanged) ? (await userManager.GenerateEmailConfirmationTokenAsync(user)) : (await userManager.GenerateChangeEmailTokenAsync(user, email)));
+            string text = (!isEmailChanged) ? (await userManager.GenerateEmailConfirmationTokenAsync(user)) : (await userManager.GenerateChangeEmailTokenAsync(user, email));
 
             string code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(text));
 

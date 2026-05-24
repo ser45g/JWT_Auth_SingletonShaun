@@ -2,8 +2,10 @@
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
@@ -228,9 +230,37 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
-            authGroup.MapGet($"/{confirmEmailEndpointName}", async Task<ContentHttpResult> ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager) =>
+            app.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext httpContext, IValidator <ChangeEmailRequest> validator, IConfirmationLinkEmailSender confirmationLinkEmailSender, UserManager<ApplicationUser> userManager) =>
             {
-                ApplicationUser? user = await userManager.FindByIdAsync(userId);
+                var validationResult = validator.Validate(changeEmailRequest);
+                if (!validationResult.IsValid)
+                {
+                    throw new ValidationException(validationResult.GetValidationErrors());
+                }
+
+                string? rawUserId = httpContext.User.FindFirstValue("id");
+
+                if (!Guid.TryParse(rawUserId, out Guid userId))
+                {
+                    throw new UnathorizedException();
+                }
+
+                var user = await userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                {
+                    throw new NotFoundException("User not found.");
+                }
+
+                await confirmationLinkEmailSender.SendConfirmationEmailAsync(user, changeEmailRequest.NewEmail, httpContext, confirmEmailEndpointName, isEmailChanged:true);
+
+                return TypedResults.Ok();
+
+            }).RequireAuthorization().WithName("changeEmail").WithDescription("Allows users to change their email for a new one.");
+
+
+            authGroup.MapGet($"/{confirmEmailEndpointName}", async Task<ContentHttpResult> ([FromQuery] string userId, [FromQuery] string code, [FromQuery] string? changedEmail, UserManager<ApplicationUser> userManager, AppIdentityDbContext dbContext) =>
+            {
+                var user = await userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
                     throw new UnathorizedException();
@@ -252,11 +282,22 @@ namespace MyJwtAuthService.Endpoints
                 }
                 else
                 {
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
                     identityResult = await userManager.ChangeEmailAsync(user, changedEmail, code);
                     if (identityResult.Succeeded)
                     {
                         identityResult = await userManager.SetUserNameAsync(user, changedEmail);
                     }
+
+                    if (identityResult.Succeeded)
+                    {
+                        identityResult = await userManager.UpdateSecurityStampAsync(user);
+                    }
+                    if (identityResult.Succeeded)
+                        await transaction.CommitAsync();
+                    else
+                        await transaction.RollbackAsync();
                 }
                 if (!identityResult.Succeeded) {
                     throw new UnathorizedException();

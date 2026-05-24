@@ -4,6 +4,6 @@ namespace MyJwtAuthService.Services.EmailSenders
 {
     public interface IConfirmationLinkEmailSender
     {
-        Task SendConfirmationEmailAsync(ApplicationUser user, string email, HttpContext context, string confirmEmailEndpointName, bool isChange = false);
+        Task SendConfirmationEmailAsync(ApplicationUser user, string email, HttpContext context, string confirmEmailEndpointName, bool isEmailChanged = false);
     }
 }
