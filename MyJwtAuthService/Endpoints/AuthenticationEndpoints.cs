@@ -230,7 +230,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
-            app.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext httpContext, IValidator <ChangeEmailRequest> validator, IConfirmationLinkEmailSender confirmationLinkEmailSender, UserManager<ApplicationUser> userManager) =>
+            authGroup.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext httpContext, IValidator <ChangeEmailRequest> validator, IConfirmationLinkEmailSender confirmationLinkEmailSender, UserManager<ApplicationUser> userManager) =>
             {
                 var validationResult = validator.Validate(changeEmailRequest);
                 if (!validationResult.IsValid)
