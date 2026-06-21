@@ -21,7 +21,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.Register
 
             Assert.NotNull(user);
 
-            var messagesSummary = await papercutService.GetMessageSummaryAsync();
+            var messagesSummary = await papercutService.GetMessageSummaryAsync(true);
 
             Assert.NotNull(messagesSummary);
             Assert.Equal(1, messagesSummary.TotalMessageCount);

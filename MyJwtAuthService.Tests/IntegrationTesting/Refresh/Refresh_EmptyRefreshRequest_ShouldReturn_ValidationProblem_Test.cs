@@ -3,6 +3,7 @@ using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
 using System.Net;
 using System.Net.Http.Json;
+using Xunit.Sdk;
 
 namespace MyJwtAuthService.Tests.IntegrationTesting.Refresh
 {
@@ -22,7 +23,10 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.Refresh
             var registerResponse = await authenticationService.RegisterUser(registerRequest);
             registerResponse.EnsureSuccessStatusCode();
 
-            var confirmEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed:true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
+
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
             confirmEmailResponse.EnsureSuccessStatusCode();
 
             var loginResponse = await authenticationService.Login(loginRequest);

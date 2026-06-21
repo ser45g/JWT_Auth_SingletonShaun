@@ -19,8 +19,10 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ResetPassword
 
             registerResponse.EnsureSuccessStatusCode();
 
-            var confirmEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
             confirmEmailResponse.EnsureSuccessStatusCode();
 
             var loginResponse = await authenticationService.Login(loginRequest);
@@ -33,9 +35,8 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ResetPassword
 
             forgotPasswordResponse.EnsureSuccessStatusCode();
 
-            var code = await papercutService.GetResetPasswordTokenFromLastEmail();
-            if (code == null)
-                throw new Exception(nameof(code));
+            var code = await papercutService.GetResetPasswordTokenFromLastEmail(isDelayed:true);
+            Assert.NotNull(code);
 
             var resetPasswordRequest = new ResetPasswordRequest() { Email= registerRequest.Email, ResetCode=code, NewPassword="Test882026***" };
 

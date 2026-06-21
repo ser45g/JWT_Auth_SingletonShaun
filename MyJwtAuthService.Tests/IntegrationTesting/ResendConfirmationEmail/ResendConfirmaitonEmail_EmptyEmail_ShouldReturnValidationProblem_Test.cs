@@ -31,7 +31,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ResendConfirmationEmail
             Assert.NotNull(problemDetails.Extensions["traceId"]);
             Assert.NotNull(problemDetails.Extensions["timestamp"]);
 
-            var messageSummary = await papercutService.GetMessageSummaryAsync();
+            var messageSummary = await papercutService.GetMessageSummaryAsync(isDelayed:true);
 
             Assert.NotNull(messageSummary);
             Assert.Equal(1, messageSummary.TotalMessageCount);

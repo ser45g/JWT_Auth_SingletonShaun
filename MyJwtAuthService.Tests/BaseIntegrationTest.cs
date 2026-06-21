@@ -11,15 +11,16 @@ namespace MyJwtAuthService.Tests
         protected AppIdentityDbContext _dbContext;
         protected IntegrationTestWebAppFactory _factory;
         protected AuthenticationService authenticationService;
-        protected PapercutService papercutService;
+        protected DelayedForOutboxPapercutService papercutService;
         protected BaseIntegrationTest(IntegrationTestWebAppFactory factory)
         {
             _factory = factory;
             _scope = _factory.Services.CreateScope();
             _dbContext = _scope.ServiceProvider.GetRequiredService<AppIdentityDbContext>();
 
-            papercutService = new PapercutService(_factory);
-            authenticationService = new AuthenticationService(_factory,papercutService);
+            papercutService = new DelayedForOutboxPapercutService(new PapercutService(_factory));
+
+            authenticationService = new AuthenticationService(_factory);
             
         }
     }

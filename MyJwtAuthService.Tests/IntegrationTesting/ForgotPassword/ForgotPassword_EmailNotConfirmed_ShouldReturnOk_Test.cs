@@ -21,7 +21,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ForgotPassword
 
             Assert.Equal(HttpStatusCode.OK, forgotPasswordResponse.StatusCode);
 
-            var code = await papercutService.GetResetPasswordTokenFromLastEmail();
+            var code = await papercutService.GetResetPasswordTokenFromLastEmail(isDelayed:true);
 
             var messagesSummary = await papercutService.GetMessageSummaryAsync();
 

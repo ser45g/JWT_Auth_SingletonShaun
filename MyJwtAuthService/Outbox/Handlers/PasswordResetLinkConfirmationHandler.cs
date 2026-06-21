@@ -9,7 +9,7 @@ namespace MyJwtAuthService.Outbox.Handlers
     {
         public async Task Handle(PasswordResetLinkConfirmationOutboxMessage notification, CancellationToken cancellationToken)
         {
-            await emailSender.SendConfirmationLinkAsync(notification.User, notification.Email, notification.ResetLink);
+            await emailSender.SendPasswordResetLinkAsync(notification.User, notification.Email, notification.ResetLink);
         }
     }
 }

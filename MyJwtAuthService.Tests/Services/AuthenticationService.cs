@@ -5,7 +5,7 @@ using System.Net.Http.Json;
 
 namespace MyJwtAuthService.Tests.Services
 {
-    public class AuthenticationService(IntegrationTestWebAppFactory factory, PapercutService papercutService)
+    public class AuthenticationService(IntegrationTestWebAppFactory factory)
     {
         public async Task<HttpResponseMessage> RegisterUser(RegisterRequest registerRequest)
         {
@@ -14,16 +14,7 @@ namespace MyJwtAuthService.Tests.Services
             using var client = factory.CreateDefaultClient();
             return await client.PostAsJsonAsync<RegisterRequest>("/auth/register", registerRequest);
         }
-        public async Task<HttpResponseMessage> ConfirmEmailByFollowingLinkFromTheLastEmail()
-        {
-            using var mailServerHttpClient = new HttpClient() { BaseAddress = new Uri(factory.MailServerConnectionString) };
 
-            var confirmationLink = await papercutService.GetConfirmationLinkFromLastEmailAsync();
-
-            using var client = factory.CreateDefaultClient();
-
-            return await client.GetAsync(confirmationLink);
-        }
 
         public async Task<HttpResponseMessage> ResetPassword(ResetPasswordRequest resetPasswordRequest)
         {

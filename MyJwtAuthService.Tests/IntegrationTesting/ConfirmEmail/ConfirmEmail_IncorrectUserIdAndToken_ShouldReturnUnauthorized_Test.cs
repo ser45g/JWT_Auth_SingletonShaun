@@ -24,7 +24,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ConfirmEmail
 
             Assert.False(unsuccessfulLoginResponse.IsSuccessStatusCode);
 
-            var link = await papercutService.GetConfirmationLinkFromLastEmailAsync();
+            var link = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed:true);
 
             if (link == null)
                 throw new Exception();

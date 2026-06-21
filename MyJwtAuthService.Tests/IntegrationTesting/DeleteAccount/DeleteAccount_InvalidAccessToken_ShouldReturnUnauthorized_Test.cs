@@ -19,8 +19,10 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.DeleteAccount
 
             registerResponse.EnsureSuccessStatusCode();
 
-            var confirmEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
             confirmEmailResponse.EnsureSuccessStatusCode();
 
             var deleteAccountResponse = await authenticationService.DeleteAccount("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.KMUFsIDTnFmyG3nMiGM6H9FNFUROf3wh7SmqJp-QV30");

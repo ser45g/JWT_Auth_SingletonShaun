@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace MyJwtAuthService.Tests.Services
 {
-    public class PapercutService
+    public class PapercutService : IPapercutService
     {
         private readonly IntegrationTestWebAppFactory factory;
 
@@ -70,7 +70,6 @@ namespace MyJwtAuthService.Tests.Services
 
             var message = await response.Content.ReadFromJsonAsync<PapercutMessageDetails>();
 
-            // 2. Parse the token from the email body
             if (message?.HtmlBody != null)
             {
                 var pattern = @"Here is your reset code: (\w+)";

@@ -16,15 +16,17 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ForgotPassword
 
             registerResponse.EnsureSuccessStatusCode();
 
-            var emailConfirmationResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
-            emailConfirmationResponse.EnsureSuccessStatusCode();
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
+            confirmEmailResponse.EnsureSuccessStatusCode();
 
             var forgotPasswordResponse = await authenticationService.ForgotPassword(forgotPasswordRequest);
 
             forgotPasswordResponse.EnsureSuccessStatusCode();
 
-            var code = await papercutService.GetResetPasswordTokenFromLastEmail();
+            var code = await papercutService.GetResetPasswordTokenFromLastEmail(isDelayed:true);
 
             Assert.NotNull(code);
         }

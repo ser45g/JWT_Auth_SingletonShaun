@@ -22,7 +22,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ResendConfirmationEmail
 
             Assert.Equal(HttpStatusCode.OK, resendConfirmationResponse.StatusCode);
 
-            var messageSummary = await papercutService.GetMessageSummaryAsync();
+            var messageSummary = await papercutService.GetMessageSummaryAsync(isDelayed:true);
 
             Assert.NotNull(messageSummary);
             Assert.Equal(1, messageSummary.TotalMessageCount);

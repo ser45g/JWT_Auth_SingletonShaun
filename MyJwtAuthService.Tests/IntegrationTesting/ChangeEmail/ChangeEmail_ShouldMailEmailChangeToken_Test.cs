@@ -19,8 +19,10 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ChangeEmail
 
             registerResponse.EnsureSuccessStatusCode();
 
-            var confirmEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
             confirmEmailResponse.EnsureSuccessStatusCode();
 
             var loginResponse = await authenticationService.Login(loginRequest);
@@ -38,9 +40,11 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.ChangeEmail
 
             changeEmailResponse.EnsureSuccessStatusCode();
 
-            var confirmChangeEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmChangeEmailLink= await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
-            confirmChangeEmailResponse.EnsureSuccessStatusCode();
+            var confirmChangeEmailResponse = await authenticationService.ConfirmEmail(confirmChangeEmailLink);
+            confirmEmailResponse.EnsureSuccessStatusCode();
 
             var loginWithNewEmailRequest = new LoginRequest() { Email = changeEmailRequest.NewEmail, Password = registerRequest.Password };
 

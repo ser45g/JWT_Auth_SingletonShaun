@@ -19,8 +19,10 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.Login
 
             registerResponse.EnsureSuccessStatusCode();
 
-            var confirmEmailResponse = await authenticationService.ConfirmEmailByFollowingLinkFromTheLastEmail();
+            var confirmEmailLink = await papercutService.GetConfirmationLinkFromLastEmailAsync(isDelayed: true);
+            WasNullException.ThrowIfNull(confirmEmailLink, nameof(confirmEmailLink));
 
+            var confirmEmailResponse = await authenticationService.ConfirmEmail(confirmEmailLink);
             confirmEmailResponse.EnsureSuccessStatusCode();
 
             var loginResponse = await authenticationService.Login(loginRequest);
