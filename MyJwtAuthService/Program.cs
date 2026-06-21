@@ -15,34 +15,35 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using MyJwtAuthService.BackgroundServices;
 using MyJwtAuthService.Outbox;
+using MyJwtAuthService.Options;
+using MyJwtAuthService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddValidationOptions();
+
+string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationOptions>();
+ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authenticationConfiguration));
 
 builder.Services.AddDbContext<AppIdentityDbContext>(o => {
     o.UseNpgsql(builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext)));
 });
 
-builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
 builder.Services.AddMediatR(o =>
 {
     o.RegisterServicesFromAssemblyContaining<Program>();
 });
 
-builder.Services.AddOptions<CorsConfiguration>().Bind(builder.Configuration.GetSection("Cors")).ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddOptions<OutboxBackgroundServiceConfiguration>().BindConfiguration("OutboxBackgroundService").ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddHostedService<OutboxBackgroundService>();
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
@@ -62,8 +63,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     
 }).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
-
-var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationConfiguration>();
 
 builder.Services.AddScoped<AccessTokenGenerator>();
 builder.Services.AddScoped<RefreshTokenGenerator>();
@@ -104,8 +103,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 builder.Services.AddAuthorization(options => {});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
-builder.Services.AddHostedService<OutboxBackgroundService>();
 
 var app = builder.Build();
 

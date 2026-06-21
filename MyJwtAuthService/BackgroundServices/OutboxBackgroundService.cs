@@ -1,10 +1,10 @@
 ﻿using Microsoft.Extensions.Options;
-using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
 using MyJwtAuthService.Outbox;
 
 namespace MyJwtAuthService.BackgroundServices
 {
-    public class OutboxBackgroundService(IServiceScopeFactory scopeFactory, IOptions<OutboxBackgroundServiceConfiguration> options) : BackgroundService
+    public class OutboxBackgroundService(IServiceScopeFactory scopeFactory, IOptions<OutboxBackgroundServiceOptions> options) : BackgroundService
     {
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {

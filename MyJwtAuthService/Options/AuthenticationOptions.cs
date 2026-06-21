@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MyJwtAuthService.Models
+namespace MyJwtAuthService.Options
 {
-    public class AuthenticationConfiguration
+    public class AuthenticationOptions
     {
         [Required]
         public required string AccessTokenSecret { get; set; }

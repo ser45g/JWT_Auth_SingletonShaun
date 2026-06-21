@@ -1,6 +1,6 @@
-﻿namespace MyJwtAuthService.Models
+﻿namespace MyJwtAuthService.Options
 {
-    public class OutboxBackgroundServiceConfiguration
+    public class OutboxBackgroundServiceOptions
     {
         public int BatchSize { get; set; } = 10;
 

@@ -2,13 +2,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MyJwtAuthService.Data;
-using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
 using System.Reflection;
 using System.Text.Json;
 
 namespace MyJwtAuthService.Outbox
 {
-    public class OutboxProcessor(AppIdentityDbContext dbContext, IPublisher sender, IOptions<OutboxBackgroundServiceConfiguration> options)
+    public class OutboxProcessor(AppIdentityDbContext dbContext, IPublisher sender, IOptions<OutboxBackgroundServiceOptions> options)
     {
         public async Task<int> ProcessOutboxMessagesAsync(CancellationToken stoppingToken)
         {

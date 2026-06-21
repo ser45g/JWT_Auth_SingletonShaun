@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -8,9 +8,9 @@ namespace MyJwtAuthService.Services.TokenValidators
 {
     public class RefreshTokenValidator
     {
-        private readonly IOptions<AuthenticationConfiguration> _configuration;
+        private readonly IOptions<AuthenticationOptions> _configuration;
 
-        public RefreshTokenValidator(IOptions<AuthenticationConfiguration> configuration)
+        public RefreshTokenValidator(IOptions<AuthenticationOptions> configuration)
         {
             _configuration = configuration;
         }

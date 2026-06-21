@@ -1,17 +1,18 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
 using System.Security.Claims;
 
 namespace MyJwtAuthService.Services.TokenGenerators
 {
     public class AccessTokenGenerator
     {
-        private readonly IOptions<AuthenticationConfiguration> _configuration;
+        private readonly IOptions<AuthenticationOptions> _configuration;
         private readonly TokenGenerator _tokenGenerator;
         private readonly UserManager<ApplicationUser> _userRepository;
 
-        public AccessTokenGenerator(IOptions<AuthenticationConfiguration> configuration, TokenGenerator tokenGenerator, UserManager<ApplicationUser> userRepository)
+        public AccessTokenGenerator(IOptions<AuthenticationOptions> configuration, TokenGenerator tokenGenerator, UserManager<ApplicationUser> userRepository)
         {
             _configuration = configuration;
             _tokenGenerator = tokenGenerator;
