@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using MyJwtAuthService.Models;
 using System.Security.Claims;
 
@@ -6,10 +7,11 @@ namespace MyJwtAuthService.Services.TokenGenerators
 {
     public class AccessTokenGenerator
     {
-        private readonly AuthenticationConfiguration _configuration;
+        private readonly IOptions<AuthenticationConfiguration> _configuration;
         private readonly TokenGenerator _tokenGenerator;
         private readonly UserManager<ApplicationUser> _userRepository;
-        public AccessTokenGenerator(AuthenticationConfiguration configuration, TokenGenerator tokenGenerator, UserManager<ApplicationUser> userRepository)
+
+        public AccessTokenGenerator(IOptions<AuthenticationConfiguration> configuration, TokenGenerator tokenGenerator, UserManager<ApplicationUser> userRepository)
         {
             _configuration = configuration;
             _tokenGenerator = tokenGenerator;
@@ -18,6 +20,7 @@ namespace MyJwtAuthService.Services.TokenGenerators
 
         public AccessToken GenerateToken(ApplicationUser user)
         {
+            var config = _configuration.Value;
             var roles = _userRepository.GetRolesAsync(user).GetAwaiter().GetResult();
          
             var roleClaims = roles.Select(r=>new Claim(ClaimTypes.Role, r)).ToList();
@@ -31,8 +34,8 @@ namespace MyJwtAuthService.Services.TokenGenerators
             };
             claims.AddRange(roleClaims);
 
-            DateTime expirationTime = DateTime.UtcNow.AddMinutes(_configuration.AccessTokenExpirationMinutes);
-            string value = _tokenGenerator.GenerateToken(_configuration.AccessTokenSecret, _configuration.Issuer, _configuration.Audience, expirationTime, claims);
+            DateTime expirationTime = DateTime.UtcNow.AddMinutes(config.AccessTokenExpirationMinutes);
+            string value = _tokenGenerator.GenerateToken(config.AccessTokenSecret, config.Issuer, config.Audience, expirationTime, claims);
 
             return new AccessToken()
             {

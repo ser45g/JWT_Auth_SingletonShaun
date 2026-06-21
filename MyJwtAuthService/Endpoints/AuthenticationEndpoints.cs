@@ -10,6 +10,7 @@ using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Outbox.Messages;
 using MyJwtAuthService.Requests;
 using MyJwtAuthService.Responses;
 using MyJwtAuthService.Services.Authenticators;
@@ -29,7 +30,7 @@ namespace MyJwtAuthService.Endpoints
         public static IEndpointRouteBuilder AddAuthenticationEndpoints(this IEndpointRouteBuilder app, string confirmEmailEndpointName="confirmEmail") {
             var authGroup = app.MapGroup("auth");
 
-            authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager <ApplicationUser> userRepository, HttpContext context,  IConfirmationLinkEmailSender confirmationEmailSender, IValidator<RegisterRequest> validator) => {
+            authGroup.MapPost("/register", async Task<Ok> ([FromBody] RegisterRequest registerRequest, UserManager<ApplicationUser> userRepository, AppIdentityDbContext dbContext, HttpContext context,  IApplicationLinkGenerator applicationLinkGenerator, IValidator<RegisterRequest> validator) => {
 
                 if (!userRepository.SupportsUserEmail)
                 {
@@ -49,6 +50,8 @@ namespace MyJwtAuthService.Endpoints
                     UserName = registerRequest.Email,
                 };
                 
+                await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
                 IdentityResult result = await userRepository.CreateAsync(registrationUser, registerRequest.Password);
                 if (!result.Succeeded)
                 {
@@ -64,8 +67,19 @@ namespace MyJwtAuthService.Endpoints
                         throw new ConflictException("Username already exists.");
                     }
                 }
-                await confirmationEmailSender.SendConfirmationEmailAsync(registrationUser,registerRequest.Email, context, confirmEmailEndpointName);
 
+                string? link = await applicationLinkGenerator.GetEmailConfirmationLink(registrationUser,registerRequest.Email, context, confirmEmailEndpointName);
+
+                if(link is null)
+                {
+                    throw new InternalServerErrorException("Failed to generate email confirmation link.");
+                }
+
+                await dbContext.InsertOutboxMessage<RegistrationEmailConfirmationOutboxMessage>(new RegistrationEmailConfirmationOutboxMessage(){Email = registerRequest.Email, User = registrationUser, ConfirmationLink = link
+                    });
+                    
+                await transaction.CommitAsync();
+                
                 return TypedResults.Ok();
 
             }).WithName("register").WithDescription("Allows registration for users using email verification.");
@@ -148,7 +162,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok(response);
             }).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
 
-            authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, IConfirmationLinkEmailSender confirmationEmailSender, IValidator<ResendRequest> validator) => {
+            authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, AppIdentityDbContext dbContext, IApplicationLinkGenerator applicationLinkGenerator, IValidator<ResendRequest> validator) => {
 
                 var validationResult = validator.Validate(resendRequest);
                 if (!validationResult.IsValid)
@@ -159,13 +173,25 @@ namespace MyJwtAuthService.Endpoints
                 ApplicationUser? user = await userManager.FindByEmailAsync(resendRequest.Email);
                 if (user != null)
                 {
-                    await confirmationEmailSender.SendConfirmationEmailAsync(user, resendRequest.Email, context, confirmEmailEndpointName);
+                    string? link = await applicationLinkGenerator.GetEmailConfirmationLink(user, resendRequest.Email, context, confirmEmailEndpointName);
+
+                    if (link is null)
+                    {
+                        throw new InternalServerErrorException("Failed to generate email confirmation link.");
+                    }
+
+                    await dbContext.InsertOutboxMessage<RegistrationEmailConfirmationOutboxMessage>(new RegistrationEmailConfirmationOutboxMessage()
+                    {
+                        Email = resendRequest.Email,
+                        User = user,
+                        ConfirmationLink = link
+                    });
                 }
                 return TypedResults.Ok();
 
             }).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
 
-            authGroup.MapPost("/forgotPassword", async Task<Ok> (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, IEmailSender<ApplicationUser> emailSender, IValidator<ForgotPasswordRequest> validator) => {
+            authGroup.MapPost("/forgotPassword", async Task<Ok> (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, AppIdentityDbContext dbContext, IEmailSender<ApplicationUser> emailSender, IValidator<ForgotPasswordRequest> validator) => {
 
                 var validationResult = validator.Validate(forgotPasswordRequest);
                 if (!validationResult.IsValid)
@@ -185,7 +211,12 @@ namespace MyJwtAuthService.Endpoints
 
                         passwordResetToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(passwordResetToken));
 
-                        await emailSender.SendPasswordResetCodeAsync(user, forgotPasswordRequest.Email, HtmlEncoder.Default.Encode(passwordResetToken));
+                        await dbContext.InsertOutboxMessage<PasswordResetCodeConfirmationOutboxMessage>(new PasswordResetCodeConfirmationOutboxMessage()
+                        {
+                            Email = forgotPasswordRequest.Email,
+                            User = user,
+                            ResetCode = passwordResetToken
+                        });
                     }
                 }
 
@@ -230,7 +261,7 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.Ok();
             }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
-            authGroup.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext httpContext, IValidator <ChangeEmailRequest> validator, IConfirmationLinkEmailSender confirmationLinkEmailSender, UserManager<ApplicationUser> userManager) =>
+            authGroup.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext context, IValidator <ChangeEmailRequest> validator,AppIdentityDbContext dbContext, IApplicationLinkGenerator applicationLinkGenerator, UserManager<ApplicationUser> userManager) =>
             {
                 var validationResult = validator.Validate(changeEmailRequest);
                 if (!validationResult.IsValid)
@@ -238,7 +269,7 @@ namespace MyJwtAuthService.Endpoints
                     throw new ValidationException(validationResult.GetValidationErrors());
                 }
 
-                string? rawUserId = httpContext.User.FindFirstValue("id");
+                string? rawUserId = context.User.FindFirstValue("id");
 
                 if (!Guid.TryParse(rawUserId, out Guid userId))
                 {
@@ -251,7 +282,19 @@ namespace MyJwtAuthService.Endpoints
                     throw new NotFoundException("User not found.");
                 }
 
-                await confirmationLinkEmailSender.SendConfirmationEmailAsync(user, changeEmailRequest.NewEmail, httpContext, confirmEmailEndpointName, isEmailChanged:true);
+                string? link = await applicationLinkGenerator.GetEmailConfirmationLink(user, changeEmailRequest.NewEmail, context, confirmEmailEndpointName, isEmailChanged:true);
+
+                if (link is null)
+                {
+                    throw new InternalServerErrorException("Failed to generate email confirmation link.");
+                }
+
+                await dbContext.InsertOutboxMessage<RegistrationEmailConfirmationOutboxMessage>(new RegistrationEmailConfirmationOutboxMessage()
+                {
+                    Email = changeEmailRequest.NewEmail,
+                    User = user,
+                    ConfirmationLink = link
+                });
 
                 return TypedResults.Ok();
 

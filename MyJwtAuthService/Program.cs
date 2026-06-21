@@ -1,7 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
@@ -14,6 +13,8 @@ using MyJwtAuthService.Services.TokenValidators;
 using Scalar.AspNetCore;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using MyJwtAuthService.BackgroundServices;
+using MyJwtAuthService.Outbox;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +24,18 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddMediatR(o =>
+{
+    o.RegisterServicesFromAssemblyContaining<Program>();
+});
 
 builder.Services.AddOptions<CorsConfiguration>().Bind(builder.Configuration.GetSection("Cors")).ValidateDataAnnotations().ValidateOnStart();
+
+builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
+
+builder.Services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
+
+builder.Services.AddOptions<OutboxBackgroundServiceConfiguration>().BindConfiguration("OutboxBackgroundService").ValidateDataAnnotations().ValidateOnStart();
 
 builder.Services.AddCors(options =>
 {
@@ -52,10 +63,6 @@ builder.Services.AddIdentityCore<ApplicationUser>(o =>
     
 }).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
 
-builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddScoped<AuthenticationConfiguration>(s=>s.GetRequiredService<IOptions<AuthenticationConfiguration>>().Value);
-
 var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationConfiguration>();
 
 builder.Services.AddScoped<AccessTokenGenerator>();
@@ -66,9 +73,9 @@ builder.Services.AddScoped<TokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailSender<ApplicationUser>, EmailSender>();
-builder.Services.AddScoped<IConfirmationLinkEmailSender, ConfirmationLinkEmailSender>();
+builder.Services.AddScoped<IApplicationLinkGenerator, ApplicationLinkGenerator>();
 
-builder.Services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddTransient<OutboxProcessor>();
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -97,6 +104,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 builder.Services.AddAuthorization(options => {});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddHostedService<OutboxBackgroundService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

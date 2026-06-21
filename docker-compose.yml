@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     environment:
      
-    - "ConnectionStrings__AppIdentityDbContext=User Id=postgres;Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=identitydb"
+    - "ConnectionStrings__AppIdentityDbContext=User Id=${IDENTITY_DB_POSTGRES_USER};Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=${IDENTITY_DB_NAME}"
     - "Authentication__AccessTokenSecret=${AUTHENTICATION_ACCESSTOKENSECRET}"
     - "Authentication__RefreshTokenSecret=${AUTHENTICATION__REFRESHTOKENSECRET}"
     - "Authentication__AccessTokenExpirationMinutes=30"
@@ -30,7 +30,7 @@ services:
 
   identitydb:
     container_name: identitydb
-    image: postgres:latest
+    image: postgres:19beta1
     environment:
       POSTGRES-DB: "identitydb"
       POSTGRES_USER: ${IDENTITY_DB_POSTGRES_USER}
@@ -38,7 +38,7 @@ services:
     volumes:
       - identity-data:/var/lib/postgresql
   papercut:
-    image: changemakerstudiosus/papercut-smtp:latest
+    image: changemakerstudiosus/papercut-smtp
     container_name: papercut_smtp
     ports:
       - "8093:8080"

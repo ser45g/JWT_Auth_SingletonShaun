@@ -1,12 +1,14 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Outbox;
 
 namespace MyJwtAuthService.Data
 {
     public class AppIdentityDbContext : IdentityDbContext<ApplicationUser, Role, Guid>{
         public AppIdentityDbContext(DbContextOptions<AppIdentityDbContext> options) : base(options){}
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
