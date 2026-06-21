@@ -9,6 +9,7 @@ namespace MyJwtAuthService.Tests.Services
         {
             if(isDelayed)
                 await Task.Delay(IntegrationTestWebAppFactory.OutboxDelayMiliseconds);
+
             return await papercutService.GetConfirmationLinkAsync(messageIdEscaped);
         }
 
@@ -16,6 +17,7 @@ namespace MyJwtAuthService.Tests.Services
         {
             if (isDelayed)
                 await Task.Delay(IntegrationTestWebAppFactory.OutboxDelayMiliseconds);
+
             return await  papercutService.GetConfirmationLinkFromLastEmailAsync();
         }
 
@@ -23,6 +25,7 @@ namespace MyJwtAuthService.Tests.Services
         {
             if (isDelayed)
                 await Task.Delay(IntegrationTestWebAppFactory.OutboxDelayMiliseconds);
+
             return await papercutService.GetMessageSummaryAsync();
         }
 
@@ -30,6 +33,7 @@ namespace MyJwtAuthService.Tests.Services
         {
             if (isDelayed)
                 await Task.Delay(IntegrationTestWebAppFactory.OutboxDelayMiliseconds);
+
             return await papercutService.GetResetPasswordToken(messageIdEscaped);
         }
 
@@ -37,6 +41,7 @@ namespace MyJwtAuthService.Tests.Services
         {
             if (isDelayed)
                 await Task.Delay(IntegrationTestWebAppFactory.OutboxDelayMiliseconds);
+
             return await papercutService.GetResetPasswordTokenFromLastEmail();
         }
     }

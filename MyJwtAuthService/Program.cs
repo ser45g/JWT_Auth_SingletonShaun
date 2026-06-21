@@ -75,7 +75,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IEmailSender<ApplicationUser>, EmailSender>();
 builder.Services.AddScoped<IApplicationLinkGenerator, ApplicationLinkGenerator>();
 
-builder.Services.AddTransient<OutboxProcessor>();
+builder.Services.AddScoped<OutboxProcessor>();
 
 builder.Services.AddProblemDetails(options =>
 {

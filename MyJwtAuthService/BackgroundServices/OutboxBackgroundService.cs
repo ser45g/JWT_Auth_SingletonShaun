@@ -8,7 +8,7 @@ namespace MyJwtAuthService.BackgroundServices
     {
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var intervalSeconds = options.Value.IntervalSeconds;
+            var intervalSeconds = options.Value.IntervalMiliseconds;
             try
             {
                 while (!stoppingToken.IsCancellationRequested)
@@ -19,7 +19,7 @@ namespace MyJwtAuthService.BackgroundServices
 
                     await outboxProcessor.ProcessOutboxMessagesAsync(stoppingToken);
 
-                    await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), stoppingToken);
+                    await Task.Delay(intervalSeconds, stoppingToken);
                 }
             }
             catch(Exception ex)
