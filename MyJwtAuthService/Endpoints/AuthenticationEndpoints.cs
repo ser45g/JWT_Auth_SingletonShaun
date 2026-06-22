@@ -66,9 +66,13 @@ namespace MyJwtAuthService.Endpoints
                     {
                         throw new ConflictException("Username already exists.");
                     }
+                    else
+                    {
+                        throw new ValidationException(result.GetValidationErrors());
+                    }
                 }
 
-                string? link = await applicationLinkGenerator.GetEmailConfirmationLink(registrationUser,registerRequest.Email, context, confirmEmailEndpointName);
+                string? link = await applicationLinkGenerator.GetEmailConfirmationLink(registrationUser, registerRequest.Email, context, confirmEmailEndpointName);
 
                 if(link is null)
                 {
