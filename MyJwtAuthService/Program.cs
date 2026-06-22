@@ -20,7 +20,7 @@ using MyJwtAuthService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddValidationOptions();
+builder.Services.AddValidationOptions(builder.Configuration);
 
 string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
@@ -50,19 +50,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-builder.Services.AddIdentityCore<ApplicationUser>(o =>
-{
-    o.User.RequireUniqueEmail = true;
-
-    o.Password.RequireDigit = true;
-    o.Password.RequireNonAlphanumeric = true;
-    o.Password.RequireUppercase = true;
-    o.Password.RequiredLength = 8;
-
-    o.Lockout.MaxFailedAccessAttempts = 5;
-    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
-    
-}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
+builder.Services.AddIdentityCore<ApplicationUser>().AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
 
 builder.Services.AddScoped<AccessTokenGenerator>();
 builder.Services.AddScoped<RefreshTokenGenerator>();

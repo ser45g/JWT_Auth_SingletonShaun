@@ -2,14 +2,12 @@
 using Microsoft.AspNetCore.Identity;
 using MyJwtAuthService.Options;
 using MyJwtAuthService.Services.EmailSenders;
-using System.Collections;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MyJwtAuthService.Extensions
 {
     public static class ValidationExtensions
     {
-        public static IServiceCollection AddValidationOptions(this IServiceCollection services)
+        public static IServiceCollection AddValidationOptions(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddOptions<CorsOptions>().BindConfiguration("Cors").ValidateDataAnnotations().ValidateOnStart();
 
@@ -18,6 +16,8 @@ namespace MyJwtAuthService.Extensions
             services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
 
             services.AddOptions<OutboxBackgroundServiceOptions>().BindConfiguration("OutboxBackgroundService").ValidateDataAnnotations().ValidateOnStart();
+
+            services.Configure<IdentityOptions>(configuration.GetSection(nameof(IdentityOptions)));
 
             return services;
         }

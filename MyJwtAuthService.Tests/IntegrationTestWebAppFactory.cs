@@ -18,6 +18,8 @@ namespace MyJwtAuthService.Tests
         public string MailServerConnectionString => _mailServer.GetConnectionString();
 
         public const int OutboxDelayMiliseconds = 2000;
+        public const int MaxFailedAccessAttemptsForLockout = 5;
+        public const int PasswordRequiredLenght = 8;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -28,6 +30,8 @@ namespace MyJwtAuthService.Tests
             builder.UseSetting("Authentication:AccessTokenSecret", "dy#taBV=*Ss8*ecisI*z$+0e$PhFdRUy-X1p#7SKacGjw#CIZP$hpxBamU87H?dovVP1q$QE=iTHMVZ!9-fl12KapdgF*2k9b9s*TS6!L5?aqZPQ-GbSkh+y*Oz6Icx2");
             builder.UseSetting("Authentication:RefreshTokenSecret", "t43Qziswlo!&b-FuCMlONT&1rSG-qqpQJ3pPymL7X+XfnttwV#J&ov?GykxyESa3nE45FIbie7Y#ndBuHCEGuueRn+IGEyc&V758GbJp$uZJO$D6pc#k3dJ#nAM?cZ*!");
             builder.UseSetting("OutboxBackgroundService:IntervalMiliseconds", "400");
+            builder.UseSetting("IdentityOptions:Lockout:MaxFailedAccessAttempts", MaxFailedAccessAttemptsForLockout.ToString());
+            builder.UseSetting("IdentityOptions:Password:RequiredLength", PasswordRequiredLenght.ToString());
 
             builder.ConfigureTestServices(services => {
                 
