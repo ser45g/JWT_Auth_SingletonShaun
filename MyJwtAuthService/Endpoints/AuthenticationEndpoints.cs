@@ -1,11 +1,8 @@
 ﻿using FluentValidation;
-using FluentValidation.Results;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
@@ -17,10 +14,8 @@ using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenValidators;
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Encodings.Web;
 using ValidationException = MyJwtAuthService.Exceptions.ValidationException;
 
 namespace MyJwtAuthService.Endpoints
@@ -387,10 +382,29 @@ namespace MyJwtAuthService.Endpoints
                 return TypedResults.NoContent();
             }).RequireAuthorization().WithName("delete-account").WithDescription("Allows users to delete their account if they want.");
 
+
+            authGroup.MapGet("/account-info", async Task<Ok<UserInfoResponse>> (UserManager<ApplicationUser> userManager, HttpContext httpContext) =>
+            {
+                string? rawUserId = httpContext.User.FindFirstValue("id");
+
+                if (!Guid.TryParse(rawUserId, out Guid userId))
+                {
+                    throw new UnathorizedException();
+                }
+                ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
+                if (user == null)
+                {
+                    throw new NotFoundException("User not found.");
+                }
+                var roles = await userManager.GetRolesAsync(user);
+
+                var userResponse = new UserInfoResponse(user.Id, user.UserName, user.Email, user.EmailConfirmed, roles);
+
+                return TypedResults.Ok(userResponse);
+            }).RequireAuthorization().WithName("account-info").WithDescription("Allows users to get their account information");
+
             return authGroup;
         }
-
-       
     }
 }
 
