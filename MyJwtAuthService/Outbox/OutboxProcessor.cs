@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Options;
+using Polly;
+using Polly.Retry;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
@@ -16,6 +18,7 @@ namespace MyJwtAuthService.Outbox
     {
         private static readonly ConcurrentDictionary<string, Type> TypeCache = new();
 
+        private static readonly AsyncRetryPolicy RetryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync(3, t=> TimeSpan.FromMilliseconds(t*150));
         private static Type? GetOrAddMessageType(string typeName, Assembly assembly)
         {
             var type = assembly.GetType(typeName);
@@ -41,10 +44,8 @@ namespace MyJwtAuthService.Outbox
 
             var entities = updateQueue.ToList();
 
-            await dbContext.BulkUpdateAsync(entities, new BulkConfig()
-            {
-                PropertiesToInclude = new List<string> { nameof(OutboxMessage.ProcessedOnUtc), nameof(OutboxMessage.Error)}
-            }, cancellationToken:stoppingToken);
+            await RetryPolicy.ExecuteAsync(async () => 
+                await dbContext.BulkUpdateAsync(entities, new BulkConfig() { PropertiesToInclude = new List<string> { nameof(OutboxMessage.ProcessedOnUtc), nameof(OutboxMessage.Error)}}, cancellationToken:stoppingToken));
 
             await transaction.CommitAsync(stoppingToken);
 
