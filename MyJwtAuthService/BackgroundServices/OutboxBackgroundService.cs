@@ -15,7 +15,7 @@ namespace MyJwtAuthService.BackgroundServices
 
             try
             {
-                await Parallel.ForEachAsync(Enumerable.Range(0, 5), parallelOptions, async (index, ct) =>
+                await Parallel.ForEachAsync(Enumerable.Range(0, options.Value.MaxDegreeOfParallelism), parallelOptions, async (index, ct) =>
                 {
                     await ProcessOutboxMessages(stoppingToken, intervalMiliseconds);
                 });
