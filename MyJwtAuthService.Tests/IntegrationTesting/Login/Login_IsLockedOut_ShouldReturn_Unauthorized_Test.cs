@@ -28,7 +28,7 @@ namespace MyJwtAuthService.Tests.IntegrationTesting.Login
             HttpResponseMessage correctLoginResponse1 = await authenticationService.Login(correctLoginRequest);
             correctLoginResponse1.EnsureSuccessStatusCode();
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < IntegrationTestWebAppFactory.MaxFailedAccessAttemptsForLockout; i++)
             {
                 await authenticationService.Login(incorrectLoginRequest);
             }

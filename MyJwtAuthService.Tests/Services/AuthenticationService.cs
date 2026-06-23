@@ -23,6 +23,16 @@ namespace MyJwtAuthService.Tests.Services
             return await client.PostAsJsonAsync<ResetPasswordRequest>("/auth/resetPassword", resetPasswordRequest);
         }
 
+        public async Task<HttpResponseMessage> GetAccountInfo(string accessToken)
+        {
+            using var client = factory.CreateDefaultClient();
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            return await client.GetAsync("/auth/account-info");
+        }
+
+
         public async Task<HttpResponseMessage> ConfirmEmail(string userId, string code, string? changedEmail=null)
         {
             using var client = factory.CreateDefaultClient();
