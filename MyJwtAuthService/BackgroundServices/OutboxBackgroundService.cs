@@ -8,25 +8,36 @@ namespace MyJwtAuthService.BackgroundServices
     {
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var intervalSeconds = options.Value.IntervalMiliseconds;
+            var intervalMiliseconds = options.Value.IntervalMiliseconds;
+            var maxDegreeOfParallelism = options.Value.MaxDegreeOfParallelism;
+
+            var parallelOptions = new ParallelOptions() { CancellationToken=stoppingToken, MaxDegreeOfParallelism = maxDegreeOfParallelism };
+
             try
             {
-                while (!stoppingToken.IsCancellationRequested)
+                await Parallel.ForEachAsync(Enumerable.Range(0, 5), parallelOptions, async (index, ct) =>
                 {
-                    using var scope = scopeFactory.CreateScope();
-
-                    var outboxProcessor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
-
-                    await outboxProcessor.ProcessOutboxMessagesAsync(stoppingToken);
-
-                    await Task.Delay(intervalSeconds, stoppingToken);
-                }
+                    await ProcessOutboxMessages(stoppingToken, intervalMiliseconds);
+                });
             }
             catch(Exception ex)
             {
                 var logger = scopeFactory.CreateScope().ServiceProvider.GetRequiredService<ILogger<OutboxBackgroundService>>();
                 logger.LogError(ex, "An error occurred while processing outbox messages.");
             };
+        }
+
+        private async Task ProcessOutboxMessages(CancellationToken stoppingToken, int intervalMiliseconds) {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                using var scope = scopeFactory.CreateScope();
+
+                var outboxProcessor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
+
+                await outboxProcessor.ProcessOutboxMessagesAsync(stoppingToken);
+
+                await Task.Delay(intervalMiliseconds, stoppingToken);
+            }
         }
     }
 }

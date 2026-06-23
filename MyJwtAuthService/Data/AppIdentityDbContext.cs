@@ -38,6 +38,8 @@ namespace MyJwtAuthService.Data
             base.OnModelCreating(builder);
 
             builder.Entity<RefreshToken>().HasOne(r => r.User).WithMany(u => u.RefreshTokens).IsRequired().OnDelete(DeleteBehavior.Cascade);
+            
+            builder.Entity<OutboxMessage>().HasIndex(x => new { x.OccuredOnUtc, x.ProcessedOnUtc }).HasFilter($"\"{nameof(OutboxMessage.ProcessedOnUtc)}\" IS NULL").IncludeProperties(nameof(OutboxMessage.Id), nameof(OutboxMessage.Content), nameof(OutboxMessage.Type));
         }
     }
 }

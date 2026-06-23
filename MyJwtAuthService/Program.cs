@@ -17,6 +17,7 @@ using MyJwtAuthService.BackgroundServices;
 using MyJwtAuthService.Outbox;
 using MyJwtAuthService.Options;
 using MyJwtAuthService.Extensions;
+using EFCore.PostgresExtensions.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +29,7 @@ var authenticationConfiguration = builder.Configuration.GetSection("Authenticati
 ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authenticationConfiguration));
 
 builder.Services.AddDbContext<AppIdentityDbContext>(o => {
-    o.UseNpgsql(builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext)));
+    o.UseNpgsql(builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext))).UseQueryLocks();
 });
 
 builder.Services.AddOpenApi();

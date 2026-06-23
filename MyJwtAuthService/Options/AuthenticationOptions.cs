@@ -5,21 +5,21 @@ namespace MyJwtAuthService.Options
     public class AuthenticationOptions
     {
         [Required]
-        public required string AccessTokenSecret { get; set; }
+        public required string AccessTokenSecret { get; init; }
 
         [Required]
-        public required double AccessTokenExpirationMinutes { get; set; }
+        public required double AccessTokenExpirationMinutes { get; init; }
 
         [Required]
-        public required string Issuer { get; set; }
+        public required string Issuer { get; init; }
 
         [Required]
-        public required string Audience { get; set; }
+        public required string Audience { get; init; }
 
         [Required]
-        public required string RefreshTokenSecret { get; set; }
+        public required string RefreshTokenSecret { get; init; }
 
         [Required]
-        public required double RefreshTokenExpirationMinutes { get; set; }
+        public required double RefreshTokenExpirationMinutes { get; init; }
     }
 }

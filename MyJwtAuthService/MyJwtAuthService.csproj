@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="EFCore.BulkExtensions.PostgreSql" Version="10.0.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="MediatR" Version="14.1.0" />
@@ -32,6 +33,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="MimeKit" Version="4.16.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageReference Include="Pandatech.EFCore.PostgresExtensions" Version="7.0.1" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.14.11" />
   </ItemGroup>
 
