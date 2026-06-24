@@ -5,8 +5,8 @@ services:
       context: MyJwtAuthService
       dockerfile: Dockerfile
     environment:
-     
-    - "ConnectionStrings__AppIdentityDbContext=User Id=${IDENTITY_DB_POSTGRES_USER};Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=${IDENTITY_DB_NAME}"
+    - "ConnectionStrings__AppIdentityDbContext=User Id=${IDENTITY_DB_POSTGRES_USER};Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=${IDENTITY_DB_POSTGRES_NAME}"
+    - "ConnectionStrings__Hangfire=User Id=${HANGFIRE_DB_POSTGRES_USER};Password=${HANGFIRE_DB_POSTGRES_PASSWORD};Server=hangfire-postgres:5432;Database=${HANGFIRE_DB_POSTGRES_NAME}"
     - "Authentication__AccessTokenSecret=${AUTHENTICATION_ACCESSTOKENSECRET}"
     - "Authentication__RefreshTokenSecret=${AUTHENTICATION__REFRESHTOKENSECRET}"
     - "Authentication__AccessTokenExpirationMinutes=30"
@@ -25,6 +25,7 @@ services:
     depends_on:
       - identitydb
       - papercut
+      - hangfire-postgres
     ports:
       - 8081:8081
 
@@ -32,19 +33,28 @@ services:
     container_name: identitydb
     image: postgres:19beta1
     environment:
-      POSTGRES-DB: "identitydb"
+      POSTGRES-DB: ${IDENTITY_DB_POSTGRES_NAME}
       POSTGRES_USER: ${IDENTITY_DB_POSTGRES_USER}
       POSTGRES_PASSWORD: ${IDENTITY_DB_POSTGRES_PASSWORD}
     volumes:
       - identity-data:/var/lib/postgresql
+  hangfire-postgres:
+    container_name: hangfire-postgres
+    image: postgres:19beta1
+    environment:
+      POSTGRES-DB: ${HANGFIRE_DB_POSTGRES_NAME}
+      POSTGRES_USER: ${HANGFIRE_DB_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${HANGFIRE_DB_POSTGRES_PASSWORD}
+    volumes:
+      - hangfire-postgres-data:/var/lib/postgresql
   papercut:
-    image: changemakerstudiosus/papercut-smtp
+    image: changemakerstudiosus/papercut-smtp:7.7.3-alpha.7
     container_name: papercut_smtp
     ports:
       - "8093:8080"
   pgadmin:
     container_name: pgadmin
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:2026-06-18-3
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
       - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
@@ -57,7 +67,6 @@ services:
       - identitydb
 volumes:
   identity-data:
-    driver: local
+  hangfire-postgres-data:
   pgadmin:
-    driver: local
 

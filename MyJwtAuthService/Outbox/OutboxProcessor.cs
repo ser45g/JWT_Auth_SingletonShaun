@@ -25,11 +25,12 @@ namespace MyJwtAuthService.Outbox
 
             return type != null ? TypeCache.GetOrAdd(typeName, type) : null ;
         }
-        public async Task<int> ProcessOutboxMessagesAsync(CancellationToken stoppingToken)
+        public async Task<int> ProcessOutboxMessagesAsync(CancellationToken stoppingToken=default)
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(stoppingToken);
 
             List<OutboxMessage> nonProcessedMessages= await dbContext.OutboxMessages.AsNoTracking().Where(m => m.ProcessedOnUtc == null).OrderBy(m=>m.OccuredOnUtc).Take(options.Value.BatchSize).ForUpdate<OutboxMessage>(LockBehavior.SkipLocked).ToListAsync(stoppingToken);
+            Console.WriteLine(DateTime.Now.ToLongTimeString());
 
             if (nonProcessedMessages.Count == 0) {
                 return 0;

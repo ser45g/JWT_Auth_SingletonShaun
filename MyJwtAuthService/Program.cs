@@ -13,11 +13,12 @@ using MyJwtAuthService.Services.TokenValidators;
 using Scalar.AspNetCore;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
-using MyJwtAuthService.BackgroundServices;
 using MyJwtAuthService.Outbox;
 using MyJwtAuthService.Options;
 using MyJwtAuthService.Extensions;
 using EFCore.PostgresExtensions.Extensions;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +29,18 @@ string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins"
 var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationOptions>();
 ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authenticationConfiguration));
 
+var outboxBacgroundServiceConfiguration = builder.Configuration.GetSection("OutboxBackgroundService").Get<OutboxBackgroundServiceOptions>();
+ArgumentNullException.ThrowIfNull(outboxBacgroundServiceConfiguration, nameof(outboxBacgroundServiceConfiguration));
+
+var identityDbConnectionString = builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext));
+var hangfireDbConnectionString = builder.Configuration.GetConnectionString("Hangfire");
+
 builder.Services.AddDbContext<AppIdentityDbContext>(o => {
-    o.UseNpgsql(builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext))).UseQueryLocks();
+    o.UseNpgsql(identityDbConnectionString).UseQueryLocks();
+});
+
+builder.Services.AddDbContext<HangfireDbContext>(o => {
+    o.UseNpgsql(hangfireDbConnectionString);
 });
 
 builder.Services.AddOpenApi();
@@ -39,7 +50,21 @@ builder.Services.AddMediatR(o =>
     o.RegisterServicesFromAssemblyContaining<Program>();
 });
 
-builder.Services.AddHostedService<OutboxBackgroundService>();
+builder.Services.AddHangfire(config =>
+{
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180).UseSimpleAssemblyNameTypeSerializer().UseRecommendedSerializerSettings().UsePostgreSqlStorage(o =>
+          {
+              o.UseNpgsqlConnection(hangfireDbConnectionString);
+          }, new PostgreSqlStorageOptions
+          {
+              PrepareSchemaIfNecessary = true,
+              SchemaName = "Schema"
+          });
+});
+builder.Services.AddHangfireServer(o =>
+{
+    o.SchedulePollingInterval = TimeSpan.FromSeconds(outboxBacgroundServiceConfiguration.IntervalSeconds);
+});
 
 builder.Services.AddCors(options =>
 {
@@ -99,6 +124,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    app.UseHangfireDashboard();
+    app.MapHangfireDashboard("/hangfire");
 }
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -114,11 +141,17 @@ app.AddAuthenticationEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetService<AppIdentityDbContext>();
-    ArgumentNullException.ThrowIfNull(context, nameof(context));
-    using (context) {
-        await context.Database.MigrateAsync();
-    }
+    await using var identityContext = scope.ServiceProvider.GetService<AppIdentityDbContext>();
+    ArgumentNullException.ThrowIfNull(identityContext, nameof(identityContext));
+    await identityContext.Database.MigrateAsync();
+
+    await using var hangfireContext = scope.ServiceProvider.GetService<HangfireDbContext>();
+    ArgumentNullException.ThrowIfNull(hangfireContext, nameof(hangfireContext));
+    await hangfireContext.Database.MigrateAsync();
+
+    var recurringJobManager = scope.ServiceProvider.GetService<IRecurringJobManager>();
+    
+    recurringJobManager.AddOrUpdate<OutboxProcessor>("outbox-job", x => x.ProcessOutboxMessagesAsync(CancellationToken.None), $"*/{outboxBacgroundServiceConfiguration.IntervalSeconds} * * * * *");
 }
 
 app.Run();
