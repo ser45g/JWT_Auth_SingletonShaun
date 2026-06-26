@@ -1,4 +1,6 @@
 ﻿using DotNet.Testcontainers.Builders;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -9,9 +11,9 @@ namespace MyJwtAuthService.Tests
 {
     public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
-        private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:19beta1").WithHostname("localhost").WithDatabase("identitydb-test").WithUsername("postgres").WithPassword("postgres").WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(5432)).Build();
+        private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:19beta1").WithDatabase("identitydb-test").WithUsername("postgres").WithPassword("postgres").WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(5432)).Build();
         
-        private readonly PostgreSqlContainer _hangfireDbContainer = new PostgreSqlBuilder("postgres:19beta1").WithHostname("localhost").WithDatabase("hangfiredb-test").WithUsername("postgres").WithPassword("postgres").WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(5432)).Build();
+        private readonly PostgreSqlContainer _hangfireDbContainer = new PostgreSqlBuilder("postgres:19beta1").WithDatabase("hangfire").WithUsername("postgres").WithPassword("postgres").WithWaitStrategy(Wait.ForUnixContainer().UntilInternalTcpPortIsAvailable(5432)).Build();
 
         //private readonly IContainer _mailServer = new ContainerBuilder("changemakerstudiosus/papercut-smtp:latest").WithName("papercut-test").WithHostname("localhost").WithPortBinding(2525,2525).WithPortBinding(8096,8080).Build();
 
@@ -20,8 +22,8 @@ namespace MyJwtAuthService.Tests
         public string DatabaseConnectionString => _dbContainer.GetConnectionString();
         public string MailServerConnectionString => _mailServer.GetConnectionString();
 
-        public const int OutboxDelayMiliseconds = 3000;
-        public const int MaxFailedAccessAttemptsForLockout = 5;
+        public const int OutboxDelayMiliseconds = 9000;
+        public const int MaxFailedAccessAttemptsForLockout = 1;
         public const int PasswordRequiredLenght = 8;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -38,7 +40,9 @@ namespace MyJwtAuthService.Tests
             builder.UseSetting("IdentityOptions:Password:RequiredLength", PasswordRequiredLenght.ToString());
         
             builder.ConfigureTestServices(services => {
-              
+                JobStorage.Current = null; 
+
+               
             });
         }
         public Task InitializeAsync()

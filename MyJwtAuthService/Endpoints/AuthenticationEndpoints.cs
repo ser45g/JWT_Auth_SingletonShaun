@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
+using MyJwtAuthService.Helpers;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Outbox.Messages;
 using MyJwtAuthService.Requests;
@@ -81,7 +82,7 @@ namespace MyJwtAuthService.Endpoints
                 
                 return TypedResults.Ok();
 
-            }).WithName("register").WithDescription("Allows registration for users using email verification.");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("register").WithDescription("Allows registration for users using email verification.");
 
             authGroup.MapPost("/login", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] LoginRequest loginRequest,
                 UserManager<ApplicationUser> userRepository, Authenticator authenticator, SignInManager<ApplicationUser> signInManager, IValidator<LoginRequest> validator) =>
@@ -159,7 +160,7 @@ namespace MyJwtAuthService.Endpoints
                 AuthenticatedUserResponse response = await authenticator.Authenticate(user);
 
                 return TypedResults.Ok(response);
-            }).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
 
             authGroup.MapPost("/resendConfirmationEmail", async Task<Ok> (ResendRequest resendRequest, HttpContext context, UserManager<ApplicationUser> userManager, AppIdentityDbContext dbContext, IApplicationLinkGenerator applicationLinkGenerator, IValidator<ResendRequest> validator) => {
 
@@ -188,7 +189,7 @@ namespace MyJwtAuthService.Endpoints
                 }
                 return TypedResults.Ok();
 
-            }).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("resendConfirmationEmail").WithDescription("To be able to sign in to a user's account, email confirmation is required. Such an email is sent during registration, but if it fails, you can always resend your confirmation email.");
 
             authGroup.MapPost("/forgotPassword", async Task<Ok> (ForgotPasswordRequest forgotPasswordRequest, UserManager<ApplicationUser> userManager, AppIdentityDbContext dbContext, IEmailSender<ApplicationUser> emailSender, IValidator<ForgotPasswordRequest> validator) => {
 
@@ -220,7 +221,7 @@ namespace MyJwtAuthService.Endpoints
                 }
 
                 return TypedResults.Ok();
-            }).WithName("forgotPassword").WithDescription("Allows you to restore the access to your account. You get an email, in which you get a reset token. Then you need to pass that token to the reset password endpoint.");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("forgotPassword").WithDescription("Allows you to restore the access to your account. You get an email, in which you get a reset token. Then you need to pass that token to the reset password endpoint.");
 
             authGroup.MapPost("/resetPassword", async Task<Ok> (ResetPasswordRequest resetRequest, UserManager<ApplicationUser> userManager, IValidator<ResetPasswordRequest> validator) => {
 
@@ -258,7 +259,7 @@ namespace MyJwtAuthService.Endpoints
                 }
 
                 return TypedResults.Ok();
-            }).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("resetPassword").WithDescription("Allows you to reset your password. You need to get a reset token ");
 
             authGroup.MapPost("/changeEmail", async Task<Ok> (ChangeEmailRequest changeEmailRequest, HttpContext context, IValidator <ChangeEmailRequest> validator,AppIdentityDbContext dbContext, IApplicationLinkGenerator applicationLinkGenerator, UserManager<ApplicationUser> userManager) =>
             {
@@ -347,7 +348,7 @@ namespace MyJwtAuthService.Endpoints
 
                 return TypedResults.Text("Thank you for confirming your email.");
 
-            }).WithName(confirmEmailEndpointName).WithDescription("After recieving a confirmation email, you must follow the link which leads here. That way a user confirms their email address.");
+            }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName(confirmEmailEndpointName).WithDescription("After recieving a confirmation email, you must follow the link which leads here. That way a user confirms their email address.");
 
 
             authGroup.MapDelete("/logout", async Task<NoContent> (HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository) => {

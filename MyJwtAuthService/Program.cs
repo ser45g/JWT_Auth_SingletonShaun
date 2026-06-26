@@ -1,10 +1,21 @@
+using EFCore.PostgresExtensions.Extensions;
 using FluentValidation;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
+using MyJwtAuthService.Extensions;
+using MyJwtAuthService.Helpers;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
+using MyJwtAuthService.Outbox;
 using MyJwtAuthService.Services.Authenticators;
 using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
@@ -12,13 +23,7 @@ using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
 using Scalar.AspNetCore;
 using System.Text;
-using Microsoft.AspNetCore.Identity;
-using MyJwtAuthService.Outbox;
-using MyJwtAuthService.Options;
-using MyJwtAuthService.Extensions;
-using EFCore.PostgresExtensions.Extensions;
-using Hangfire;
-using Hangfire.PostgreSql;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,7 +47,48 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 builder.Services.AddDbContext<HangfireDbContext>(o => {
     o.UseNpgsql(hangfireDbConnectionString);
 });
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+   
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        string partitionKey = httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString();
 
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
+            factory: (partition) => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10, 
+                QueueLimit = 0, 
+                Window = TimeSpan.FromMinutes(1) 
+            });
+    });
+
+    o.AddPolicy(RateLimitingPolicyNames.IpLimiter, httpContext =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(partitionKey: httpContext.Connection.RemoteIpAddress, factory: partition => new FixedWindowRateLimiterOptions() {
+            Window = TimeSpan.FromMinutes(1),
+            AutoReplenishment =true,
+            PermitLimit = 10,
+            QueueLimit = 0
+        });
+    });
+
+    o.OnRejected = async (context, ct) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = $"{retryAfter.TotalSeconds}";
+            ProblemDetailsFactory problemDetailsFactory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
+
+            ProblemDetails problemDetails = problemDetailsFactory.CreateProblemDetails(context.HttpContext, StatusCodes.Status429TooManyRequests, "Too many requests", detail: $"Too many requests. Please try again in {retryAfter.TotalSeconds} seconds.");
+
+            await context.HttpContext.Response.WriteAsJsonAsync(problemDetails, ct);
+        }
+    };
+});
 builder.Services.AddOpenApi();
 
 builder.Services.AddMediatR(o =>
@@ -64,6 +110,7 @@ builder.Services.AddHangfire(config =>
 builder.Services.AddHangfireServer(o =>
 {
     o.SchedulePollingInterval = TimeSpan.FromSeconds(outboxBacgroundServiceConfiguration.IntervalSeconds);
+    o.MaxDegreeOfParallelismForSchedulers = outboxBacgroundServiceConfiguration.MaxDegreeOfParallelism;
 });
 
 builder.Services.AddCors(options =>
@@ -101,6 +148,8 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 
+builder.Services.AddSingleton<ProblemDetailsFactory, DefaultProblemDetailsFactory>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
     o.TokenValidationParameters = new TokenValidationParameters()
@@ -130,6 +179,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
+app.UseRateLimiter();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
