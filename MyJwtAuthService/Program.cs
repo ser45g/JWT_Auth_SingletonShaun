@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
@@ -141,7 +140,6 @@ builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = ctx =>
     {
-        // Always include useful metadata
         ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
         ctx.ProblemDetails.Extensions["timestamp"] = DateTime.UtcNow;
         ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
@@ -173,8 +171,9 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.UseHangfireDashboard();
-    app.MapHangfireDashboard("/hangfire");
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions() {
+        Authorization = []
+    });
 }
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -205,6 +204,5 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
-
 
 public partial class Program { }
