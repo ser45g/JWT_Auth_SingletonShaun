@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using MyJwtAuthService.Options;
 using MyJwtAuthService.Services.EmailSenders;
+using MyJwtAuthService.Validators.Options;
 
 namespace MyJwtAuthService.Extensions
 {
@@ -18,6 +19,14 @@ namespace MyJwtAuthService.Extensions
             services.AddOptions<OutboxBackgroundServiceOptions>().BindConfiguration("OutboxBackgroundService").ValidateDataAnnotations().ValidateOnStart();
 
             services.Configure<IdentityOptions>(configuration.GetSection(nameof(IdentityOptions)));
+
+            services.AddOptions<RateLimitingOptions>().BindConfiguration("RateLimitingOptions").Validate(x =>
+            {
+                var validator = new RateLimitingOptionsValidator();
+                var result = validator.Validate(x);
+                return result.IsValid;
+
+            }).ValidateOnStart();
 
             return services;
         }

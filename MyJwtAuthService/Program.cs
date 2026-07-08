@@ -22,7 +22,6 @@ using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
 using Scalar.AspNetCore;
 using System.Text;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +35,9 @@ ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authentica
 var outboxBacgroundServiceConfiguration = builder.Configuration.GetSection("OutboxBackgroundService").Get<OutboxBackgroundServiceOptions>();
 ArgumentNullException.ThrowIfNull(outboxBacgroundServiceConfiguration, nameof(outboxBacgroundServiceConfiguration));
 
+var rateLimitingOptions = builder.Configuration.GetSection("RateLimitingOptions").Get<RateLimitingOptions>();
+ArgumentNullException.ThrowIfNull(rateLimitingOptions, nameof(rateLimitingOptions));
+
 var identityDbConnectionString = builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext));
 var hangfireDbConnectionString = builder.Configuration.GetConnectionString("Hangfire");
 
@@ -46,48 +48,7 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 builder.Services.AddDbContext<HangfireDbContext>(o => {
     o.UseNpgsql(hangfireDbConnectionString);
 });
-builder.Services.AddRateLimiter(o =>
-{
-    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-   
-    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-    {
-        string partitionKey = httpContext.User.Identity?.Name ?? httpContext.Request.Headers.Host.ToString();
 
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: partitionKey,
-            factory: (partition) => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 10, 
-                QueueLimit = 0, 
-                Window = TimeSpan.FromMinutes(1) 
-            });
-    });
-
-    o.AddPolicy(RateLimitingPolicyNames.IpLimiter, httpContext =>
-    {
-        return RateLimitPartition.GetFixedWindowLimiter(partitionKey: httpContext.Connection.RemoteIpAddress, factory: partition => new FixedWindowRateLimiterOptions() {
-            Window = TimeSpan.FromMinutes(1),
-            AutoReplenishment =true,
-            PermitLimit = 10,
-            QueueLimit = 0
-        });
-    });
-
-    o.OnRejected = async (context, ct) =>
-    {
-        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
-        {
-            context.HttpContext.Response.Headers.RetryAfter = $"{retryAfter.TotalSeconds}";
-            ProblemDetailsFactory problemDetailsFactory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
-
-            ProblemDetails problemDetails = problemDetailsFactory.CreateProblemDetails(context.HttpContext, StatusCodes.Status429TooManyRequests, "Too many requests", detail: $"Too many requests. Please try again in {retryAfter.TotalSeconds} seconds.");
-
-            await context.HttpContext.Response.WriteAsJsonAsync(problemDetails, ct);
-        }
-    };
-});
 builder.Services.AddOpenApi();
 
 builder.Services.AddMediatR(o =>
@@ -121,6 +82,8 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddAppRateLimiting(rateLimitingOptions);
 
 builder.Services.AddIdentityCore<ApplicationUser>().AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
 
