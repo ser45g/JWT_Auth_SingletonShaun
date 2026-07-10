@@ -13,6 +13,7 @@ services:
     - "Authentication__RefreshTokenExpirationMinutes=43200"
     - "Authentication__Issuer=https://localhost:8081"
     - "Authentication__Audience=https://localhost:8081"
+
     - "MailSettings__DisplayName=MyJwtAuthService"
     - "MailSettings__From=sergey1pes@gmail.com"
     - MailSettings__Host=papercut
@@ -20,8 +21,11 @@ services:
     - "MailSettings__UserName=user1"
     - "MailSettings__Password=user1"
     - MailSettings__IsAuthenticated=false
+
     - Cors__AllowedOrigins__0=http://localhost:5173
     - Cors__AllowedOrigins__1=http://localhost:5174
+
+    - "OTEL_EXPORTER_OTLP_ENDPOINT=http://app-dashboard:18889"
     depends_on:
       - identitydb
       - papercut
@@ -65,6 +69,10 @@ services:
       - pgadmin:/var/lib/pgadmin
     depends_on:
       - identitydb
+  app-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13
+    ports:
+      - 18888:18888
 volumes:
   identity-data:
   quartz-postgres-data:

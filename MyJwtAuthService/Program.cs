@@ -18,9 +18,14 @@ using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
 using MyJwtAuthService.Webhooks;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Quartz;
 using Scalar.AspNetCore;
 using System.Text;
+using System.Threading.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +52,32 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 builder.Services.AddOpenApi();
 
 builder.Services.AddHttpClient();
+builder.Services.AddHostedService<WebhookProcessor>();
+builder.Services.AddSingleton<Channel<WebhookDispatch>>((sp) => Channel.CreateBounded<WebhookDispatch>(new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.Wait }));
+
+builder.Services.AddOpenTelemetry().ConfigureResource(config =>
+{
+    config.AddService("MyJwtAuthService");
+}).WithTracing(tracing =>
+{
+    tracing.AddAspNetCoreInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(DiagnosticConfig.ActivitySource.Name);
+    tracing.AddOtlpExporter();
+
+}).WithMetrics(metrics =>
+{
+    metrics.AddAspNetCoreInstrumentation().AddHttpClientInstrumentation();
+
+    metrics.AddOtlpExporter();
+}).WithLogging(logging =>
+{
+    logging.AddOtlpExporter();
+});
+
+builder.Logging.AddOpenTelemetry(logging => logging.AddOtlpExporter());
+
 
 builder.Services.AddScoped<WebhookDispatcher>();
 

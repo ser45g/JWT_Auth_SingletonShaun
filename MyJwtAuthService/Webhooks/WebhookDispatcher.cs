@@ -1,14 +1,22 @@
-﻿using Azure;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Data;
-using System.Data.Common;
-using System.Diagnostics;
+using MyJwtAuthService.Helpers;
+using System.Threading.Channels;
 
 namespace MyJwtAuthService.Webhooks
 {
-    public class WebhookDispatcher(IHttpClientFactory httpClientFactory, AppIdentityDbContext dbContext)
+    public class WebhookDispatcher(IHttpClientFactory httpClientFactory, Channel<WebhookDispatch> channel, AppIdentityDbContext dbContext)
     {
-        public async Task DispatchAsync<T>(string eventType, T payload, CancellationToken cancellationToken=default)
+        public async Task DispatchAsync<T>(string eventType, T payload, CancellationToken cancellationToken = default) where T : notnull
+        {
+            using var activity = DiagnosticConfig.ActivitySource.StartActivity($"{eventType} dispatched webhook");
+
+            activity?.AddTag("event.type", eventType);
+
+            await channel.Writer.WriteAsync(new WebhookDispatch(eventType, payload, activity?.Id), cancellationToken);
+        }
+
+        public async Task ProcessAsync<T>(string eventType, T payload, CancellationToken cancellationToken=default)
         {
             var subscriptions = await dbContext.WebhookSubscriptions.AsNoTracking().Where(s => s.EventType == eventType).ToListAsync(cancellationToken);
             
@@ -33,7 +41,6 @@ namespace MyJwtAuthService.Webhooks
                     await dbContext.SaveChangesAsync(cancellationToken);
                 }
             }
-
         }
     }
 }
