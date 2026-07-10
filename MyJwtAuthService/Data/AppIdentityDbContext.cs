@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Outbox;
+using MyJwtAuthService.Webhooks;
 
 namespace MyJwtAuthService.Data
 {
@@ -9,6 +10,8 @@ namespace MyJwtAuthService.Data
         public AppIdentityDbContext(DbContextOptions<AppIdentityDbContext> options) : base(options){}
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<OutboxMessage> OutboxMessages { get; set; }
+        public DbSet<WebhookSubscription> WebhookSubscriptions { get; set; }
+        public DbSet<WebhookDeliveryAttempt> WebhookDeliveryAttempts { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -40,6 +43,10 @@ namespace MyJwtAuthService.Data
             builder.Entity<RefreshToken>().HasOne(r => r.User).WithMany(u => u.RefreshTokens).IsRequired().OnDelete(DeleteBehavior.Cascade);
             
             builder.Entity<OutboxMessage>().HasIndex(x => new { x.OccuredOnUtc, x.ProcessedOnUtc }).HasFilter($"\"{nameof(OutboxMessage.ProcessedOnUtc)}\" IS NULL").IncludeProperties(nameof(OutboxMessage.Id), nameof(OutboxMessage.Content), nameof(OutboxMessage.Type));
+
+            builder.Entity<WebhookSubscription>().ToTable("webhook_subscriptions", "webhooks");
+
+            builder.Entity<WebhookDeliveryAttempt>().ToTable("delivery_attempts", "webhooks");
         }
     }
 }

@@ -17,6 +17,7 @@ using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
+using MyJwtAuthService.Webhooks;
 using Quartz;
 using Scalar.AspNetCore;
 using System.Text;
@@ -44,6 +45,10 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 });
 
 builder.Services.AddOpenApi();
+
+builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<WebhookDispatcher>();
 
 builder.Services.AddMediatR(o =>
 {
@@ -156,6 +161,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.AddAuthenticationEndpoints();
+app.AddWebhookEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
