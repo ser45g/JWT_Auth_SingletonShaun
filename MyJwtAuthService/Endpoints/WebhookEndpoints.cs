@@ -11,20 +11,16 @@ namespace MyJwtAuthService.Endpoints
         {
             var webhooksGroup = app.MapGroup("webhooks");
 
-            webhooksGroup.MapPost("subscriptions", async Task<Created> (CreateWebhookRequest req, AppIdentityDbContext dbContext) =>
+            webhooksGroup.MapPost("subscriptions", async Task<Created> (CreateWebhookRequest req, WebhookDispatcher dispatcher, CancellationToken cancellationToken) =>
             {
-                var webhookSubscription = new WebhookSubscription(Guid.NewGuid(), req.EventType, req.WebhookUrl, DateTime.UtcNow);
-
-                dbContext.WebhookSubscriptions.Add(webhookSubscription);
-
-                await dbContext.SaveChangesAsync();
+                await dispatcher.AddSubscription(req.EventType, req.WebhookUrl, cancellationToken);
 
                 return TypedResults.Created();
             });
 
-            webhooksGroup.MapPost("test", async Task<Ok>(WebhookDispatcher dispatcher) =>
+            webhooksGroup.MapPost("test", async Task<Ok>(WebhookDispatcher dispatcher, CancellationToken cancellationToken) =>
             {
-                await dispatcher.DispatchAsync("test.event", new { Message = "This is a test webhook event." });
+                await dispatcher.DispatchAsync("test.event", new { Message = "This is a test webhook event." }, cancellationToken);
                 return TypedResults.Ok();
             });
 

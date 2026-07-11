@@ -5,9 +5,13 @@ VisualStudioVersion = 18.5.11723.231
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJwtAuthService", "MyJwtAuthService\MyJwtAuthService.csproj", "{479870E8-434A-4CB5-B1DA-F74A74129FF6}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{81DDED9D-158B-E303-5F62-77A2896D2A5A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJwtAuthService.Tests", "MyJwtAuthService.Tests\MyJwtAuthService.Tests.csproj", "{59CC5C1D-0AD0-437D-B85C-F95CEC6D0A09}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webhooks.Processing", "Webhooks.Processing\Webhooks.Processing.csproj", "{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webhooks.Contracts", "Webhooks.Contracts\Webhooks.Contracts.csproj", "{59BD6DEE-6229-085C-0FA7-505A1B9E2149}"
+EndProject
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{81DDED9D-158B-E303-5F62-77A2896D2A5A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,14 +23,22 @@ Global
 		{479870E8-434A-4CB5-B1DA-F74A74129FF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479870E8-434A-4CB5-B1DA-F74A74129FF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479870E8-434A-4CB5-B1DA-F74A74129FF6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{59CC5C1D-0AD0-437D-B85C-F95CEC6D0A09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{59CC5C1D-0AD0-437D-B85C-F95CEC6D0A09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59CC5C1D-0AD0-437D-B85C-F95CEC6D0A09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{59CC5C1D-0AD0-437D-B85C-F95CEC6D0A09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,11 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using MyJwtAuthService.Data;
+﻿using MassTransit;
 using MyJwtAuthService.Helpers;
-using System.Threading.Channels;
+using Webhooks.Processing;
 
 namespace MyJwtAuthService.Webhooks
 {
-    public class WebhookDispatcher(IHttpClientFactory httpClientFactory, Channel<WebhookDispatch> channel, AppIdentityDbContext dbContext)
+    public class WebhookDispatcher(IPublishEndpoint publishEndpoint)
     {
         public async Task DispatchAsync<T>(string eventType, T payload, CancellationToken cancellationToken = default) where T : notnull
         {
@@ -13,34 +12,16 @@ namespace MyJwtAuthService.Webhooks
 
             activity?.AddTag("event.type", eventType);
 
-            await channel.Writer.WriteAsync(new WebhookDispatch(eventType, payload, activity?.Id), cancellationToken);
+            await publishEndpoint.Publish(new WebhookDispatched(eventType, payload, activity?.Id), cancellationToken);
         }
 
-        public async Task ProcessAsync<T>(string eventType, T payload, CancellationToken cancellationToken=default)
+        public async Task AddSubscription(string eventType, string webhookUrl, CancellationToken cancellationToken = default)
         {
-            var subscriptions = await dbContext.WebhookSubscriptions.AsNoTracking().Where(s => s.EventType == eventType).ToListAsync(cancellationToken);
-            
-            foreach (var subscription in subscriptions) {
-                using var httpClient = httpClientFactory.CreateClient();
+            using var activity = DiagnosticConfig.ActivitySource.StartActivity($"{eventType} subscription added");
 
-                var request = new WebhookPayload<T>(Guid.NewGuid(), eventType, subscription.Id, DateTime.UtcNow, payload);
+            activity?.AddTag("event.type", eventType);
 
-                WebhookDeliveryAttempt? deliveryAttempt = null;
-                try
-                {
-                    var response = await httpClient.PostAsJsonAsync<T>(subscription.WebhookUrl, payload, cancellationToken);
-                    deliveryAttempt = new WebhookDeliveryAttempt(Guid.NewGuid(), subscription.Id, (int)response.StatusCode, response.IsSuccessStatusCode, DateTime.UtcNow);
-
-                }
-                catch (Exception ex) {
-                    deliveryAttempt = new WebhookDeliveryAttempt(Guid.NewGuid(), subscription.Id, null, false, DateTime.UtcNow);
-                }
-                finally
-                {
-                    dbContext.WebhookDeliveryAttempts.Add(deliveryAttempt);
-                    await dbContext.SaveChangesAsync(cancellationToken);
-                }
-            }
+            await publishEndpoint.Publish(new WebhookSubscriptionAdded(Guid.NewGuid(), eventType, webhookUrl), cancellationToken);
         }
     }
 }

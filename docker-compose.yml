@@ -26,6 +26,10 @@ services:
     - Cors__AllowedOrigins__1=http://localhost:5174
 
     - "OTEL_EXPORTER_OTLP_ENDPOINT=http://app-dashboard:18889"
+
+    - "RabbitMqOptions__Url=amqp://rabbitmq:5672"
+    - "RabbitMqOptions__Username=${RABBITMQ_USER}"
+    - "RabbitMqOptions__Password=${RABBITMQ_PASSWORD}"
     depends_on:
       - identitydb
       - papercut
@@ -73,8 +77,58 @@ services:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:13
     ports:
       - 18888:18888
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+     # - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  webhooks.processing:
+    image: ${DOCKER_REGISTRY-}webhooksprocessing
+    build:
+      context: .
+      dockerfile: Webhooks.Processing/Dockerfile
+    environment:
+    - "ConnectionStrings__WebhooksDbContext=User Id=${WEBHOOKS_DB_POSTGRES_USER};Password=${WEBHOOKS_DB_POSTGRES_PASSWORD};Server=webhooks-postgres;Port=5432;Database=${WEBHOOKS_DB_POSTGRES_NAME}"
+
+    - Cors__AllowedOrigins__0=http://localhost:5173
+    - Cors__AllowedOrigins__1=http://localhost:5174
+
+    - "OTEL_EXPORTER_OTLP_ENDPOINT=http://app-dashboard:18889"
+
+    - "RabbitMqOptions__Url=amqp://rabbitmq:5672"
+    - "RabbitMqOptions__Username=${RABBITMQ_USER}"
+    - "RabbitMqOptions__Password=${RABBITMQ_PASSWORD}"
+    depends_on:
+      - webhooks-postgres
+      - rabbitmq
+  webhooks-postgres:
+    container_name: webhooks-postgres
+    image: postgres:19beta1
+    environment:
+      POSTGRES-DB: ${WEBHOOKS_DB_POSTGRES_NAME}
+      POSTGRES_USER: ${WEBHOOKS_DB_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${WEBHOOKS_DB_POSTGRES_PASSWORD}
+    volumes:
+      - webhooks-postgres-data:/var/lib/postgresql
+
 volumes:
   identity-data:
   quartz-postgres-data:
   pgadmin:
+  webhooks-postgres-data:
+  rabbitmq_data:
+
 

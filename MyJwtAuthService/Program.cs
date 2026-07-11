@@ -1,5 +1,6 @@
 using EFCore.PostgresExtensions.Extensions;
 using FluentValidation;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -42,6 +43,9 @@ ArgumentNullException.ThrowIfNull(outboxBacgroundServiceConfiguration, nameof(ou
 var rateLimitingOptions = builder.Configuration.GetSection("RateLimitingOptions").Get<RateLimitingOptions>();
 ArgumentNullException.ThrowIfNull(rateLimitingOptions, nameof(rateLimitingOptions));
 
+var rabbitMqOptions = builder.Configuration.GetRequiredSection(RabbitMqOptions.ConfigurationSection).Get<RabbitMqOptions>();
+ArgumentNullException.ThrowIfNull(rabbitMqOptions);
+
 var identityDbConnectionString = builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext));
 var quartzDbConnectionString = builder.Configuration.GetConnectionString("Quartz");
 
@@ -49,11 +53,24 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
     o.UseNpgsql(identityDbConnectionString).UseQueryLocks();
 });
 
+builder.Services.AddMassTransit(configure =>
+{
+
+    configure.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(rabbitMqOptions.Url, h =>
+        {
+            h.Username(rabbitMqOptions.Username);
+            h.Password(rabbitMqOptions.Password);
+        });
+
+        cfg.ConfigureEndpoints(context);
+    });
+});
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddHttpClient();
-builder.Services.AddHostedService<WebhookProcessor>();
-builder.Services.AddSingleton<Channel<WebhookDispatch>>((sp) => Channel.CreateBounded<WebhookDispatch>(new BoundedChannelOptions(100) { FullMode = BoundedChannelFullMode.Wait }));
 
 builder.Services.AddOpenTelemetry().ConfigureResource(config =>
 {
@@ -63,7 +80,8 @@ builder.Services.AddOpenTelemetry().ConfigureResource(config =>
     tracing.AddAspNetCoreInstrumentation()
         .AddEntityFrameworkCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddSource(DiagnosticConfig.ActivitySource.Name);
+        .AddSource(DiagnosticConfig.ActivitySource.Name)
+        .AddSource(MassTransit.Logging.DiagnosticHeaders.DefaultListenerName);
     tracing.AddOtlpExporter();
 
 }).WithMetrics(metrics =>
@@ -75,9 +93,6 @@ builder.Services.AddOpenTelemetry().ConfigureResource(config =>
 {
     logging.AddOtlpExporter();
 });
-
-builder.Logging.AddOpenTelemetry(logging => logging.AddOtlpExporter());
-
 
 builder.Services.AddScoped<WebhookDispatcher>();
 

@@ -15,6 +15,7 @@ namespace MyJwtAuthService.Extensions
             services.AddOptions<AuthenticationOptions>().BindConfiguration("Authentication").ValidateDataAnnotations().ValidateOnStart();
 
             services.AddOptions<MailSettings>().BindConfiguration("MailSettings").ValidateDataAnnotations().ValidateOnStart();
+            services.AddOptions<RabbitMqOptions>().BindConfiguration("RabbitMqOptions").ValidateDataAnnotations().ValidateOnStart();
 
             services.AddOptions<OutboxBackgroundServiceOptions>().BindConfiguration("OutboxBackgroundService").ValidateDataAnnotations().ValidateOnStart();
 
