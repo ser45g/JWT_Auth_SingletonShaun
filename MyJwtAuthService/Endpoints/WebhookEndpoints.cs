@@ -16,13 +16,7 @@ namespace MyJwtAuthService.Endpoints
                 await dispatcher.AddSubscription(req.EventType, req.WebhookUrl, cancellationToken);
 
                 return TypedResults.Created();
-            });
-
-            webhooksGroup.MapPost("test", async Task<Ok>(WebhookDispatcher dispatcher, CancellationToken cancellationToken) =>
-            {
-                await dispatcher.DispatchAsync("test.event", new { Message = "This is a test webhook event." }, cancellationToken);
-                return TypedResults.Ok();
-            });
+            }).RequireAuthorization("webhook-subscriber").WithName("add-subscription").WithDescription("Allows users to add a webhook subscription");
 
             return webhooksGroup;
         }
