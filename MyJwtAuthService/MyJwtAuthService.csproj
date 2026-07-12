@@ -14,7 +14,6 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.0-develop.154" />
-    <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" NoWarn="NU1605" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.7" NoWarn="NU1605" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.7" />
@@ -48,7 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Webhooks.Contracts\Webhooks.Contracts.csproj" />
+    <ProjectReference Include="..\MyJwtAuthServer.Contracts\MyJwtAuthServer.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

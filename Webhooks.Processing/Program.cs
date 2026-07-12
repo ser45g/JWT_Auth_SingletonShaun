@@ -24,6 +24,7 @@ builder.Services.AddDbContext<WebhooksDbContext>(o => {
     o.UseNpgsql(dbConnectionString);
 });
 
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddMassTransit(configure =>

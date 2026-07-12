@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MyJwtAuthService.Consumers;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
 using MyJwtAuthService.Extensions;
@@ -26,7 +27,7 @@ using OpenTelemetry.Trace;
 using Quartz;
 using Scalar.AspNetCore;
 using System.Text;
-using System.Threading.Channels;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +56,11 @@ builder.Services.AddDbContext<AppIdentityDbContext>(o => {
 
 builder.Services.AddMassTransit(configure =>
 {
-
+    //configure.AddConsumers(typeof(Program).Assembly);
+    configure.AddConsumer<RegistrationEmailConfirmationConsumer>();
+    configure.AddConsumer<PasswordResetLinkConfirmationConsumer>();
+    configure.AddConsumer<PasswordResetLinkConfirmationConsumer>();
+    
     configure.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(rabbitMqOptions.Url, h =>
@@ -95,11 +100,6 @@ builder.Services.AddOpenTelemetry().ConfigureResource(config =>
 });
 
 builder.Services.AddScoped<WebhookDispatcher>();
-
-builder.Services.AddMediatR(o =>
-{
-    o.RegisterServicesFromAssemblyContaining<Program>();
-});
 
 builder.Services.AddQuartz(options =>
 {

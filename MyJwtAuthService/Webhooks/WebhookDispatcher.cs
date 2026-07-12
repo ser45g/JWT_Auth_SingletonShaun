@@ -1,6 +1,6 @@
 ﻿using MassTransit;
+using MyJwtAuthServer.Contracts.Events;
 using MyJwtAuthService.Helpers;
-using Webhooks.Processing;
 
 namespace MyJwtAuthService.Webhooks
 {
@@ -12,7 +12,7 @@ namespace MyJwtAuthService.Webhooks
 
             activity?.AddTag("event.type", eventType);
 
-            await publishEndpoint.Publish(new WebhookDispatched(eventType, payload, activity?.Id), cancellationToken);
+            await publishEndpoint.Publish(new WebhookDispatchedEvent(eventType, payload, activity?.Id), cancellationToken);
         }
 
         public async Task AddSubscription(string eventType, string webhookUrl, CancellationToken cancellationToken = default)
@@ -21,7 +21,7 @@ namespace MyJwtAuthService.Webhooks
 
             activity?.AddTag("event.type", eventType);
 
-            await publishEndpoint.Publish(new WebhookSubscriptionAdded(Guid.NewGuid(), eventType, webhookUrl), cancellationToken);
+            await publishEndpoint.Publish(new WebhookSubscriptionAddedEvent(Guid.NewGuid(), eventType, webhookUrl), cancellationToken);
         }
     }
 }

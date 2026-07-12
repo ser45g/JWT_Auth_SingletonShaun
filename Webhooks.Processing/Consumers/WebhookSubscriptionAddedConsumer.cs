@@ -1,12 +1,13 @@
 ﻿using MassTransit;
+using MyJwtAuthServer.Contracts.Events;
 using Webhooks.Processing.Data;
 using Webhooks.Processing.Models;
 
 namespace Webhooks.Processing.Consumers
 {
-    public class WebhookSubscriptionAddedConsumer(WebhooksDbContext dbContext) : IConsumer<WebhookSubscriptionAdded>
+    public class WebhookSubscriptionAddedConsumer(WebhooksDbContext dbContext) : IConsumer<WebhookSubscriptionAddedEvent>
     {
-        public async Task Consume(ConsumeContext<WebhookSubscriptionAdded> context)
+        public async Task Consume(ConsumeContext<WebhookSubscriptionAddedEvent> context)
         {
             var @event = context.Message;
 

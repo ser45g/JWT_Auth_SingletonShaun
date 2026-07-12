@@ -9,9 +9,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJwtAuthService.Tests", "M
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webhooks.Processing", "Webhooks.Processing\Webhooks.Processing.csproj", "{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webhooks.Contracts", "Webhooks.Contracts\Webhooks.Contracts.csproj", "{59BD6DEE-6229-085C-0FA7-505A1B9E2149}"
-EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{81DDED9D-158B-E303-5F62-77A2896D2A5A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJwtAuthServer.Contracts", "MyJwtAuthServer.Contracts\MyJwtAuthServer.Contracts.csproj", "{BDF2B442-944E-477E-B158-AB2A32DC8107}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,14 +31,14 @@ Global
 		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5FCE2951-1C8C-47A5-99E2-9B1524A87D60}.Release|Any CPU.Build.0 = Release|Any CPU
-		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{59BD6DEE-6229-085C-0FA7-505A1B9E2149}.Release|Any CPU.Build.0 = Release|Any CPU
 		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{81DDED9D-158B-E303-5F62-77A2896D2A5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
