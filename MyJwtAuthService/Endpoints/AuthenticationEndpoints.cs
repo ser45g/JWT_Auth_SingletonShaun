@@ -123,7 +123,8 @@ namespace MyJwtAuthService.Endpoints
             }).WithName("login").WithDescription("Allows users to sign in to their account by their Username and Password");
 
             authGroup.MapPost("/refresh", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] RefreshRequest refreshRequest,
-                RefreshTokenValidator refreshTokenValidator, IRefreshTokenRepository refreshTokenRepository, UserManager<ApplicationUser> userRepository, Authenticator authenticator, IValidator<RefreshRequest> validator) => {
+                RefreshTokenValidator refreshTokenValidator, IRefreshTokenRepository refreshTokenRepository, UserManager<ApplicationUser> userRepository, Authenticator authenticator, IValidator<RefreshRequest> validator, AppIdentityDbContext dbContext) => 
+            {
 
                 var validationResult = validator.Validate(refreshRequest);
                 if (!validationResult.IsValid)
@@ -155,9 +156,13 @@ namespace MyJwtAuthService.Endpoints
                     throw new BadRequestException("Email must be confirmed");
                 }
 
+                using var transaction = await dbContext.Database.BeginTransactionAsync();
+
                 await refreshTokenRepository.Delete(refreshTokenDTO.Id);
 
                 AuthenticatedUserResponse response = await authenticator.Authenticate(user);
+
+                await transaction.CommitAsync();
 
                 return TypedResults.Ok(response);
             }).RequireRateLimiting(RateLimitingPolicyNames.IpLimiter).WithName("refresh").WithDescription("Allows users to get a new short-lived access token by their long-lived refresh token.");
