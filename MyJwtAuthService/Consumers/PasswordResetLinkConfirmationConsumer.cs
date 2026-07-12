@@ -1,5 +1,5 @@
 ﻿using MassTransit;
-using MyJwtAuthServer.Contracts.Events;
+using MyJwtAuthServer.Contracts.Events.BusinessEvents;
 using MyJwtAuthService.Services.EmailSenders;
 
 namespace MyJwtAuthService.Consumers

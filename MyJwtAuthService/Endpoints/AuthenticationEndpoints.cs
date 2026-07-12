@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using MyJwtAuthServer.Contracts.Events;
+using MyJwtAuthServer.Contracts.Events.BusinessEvents;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;

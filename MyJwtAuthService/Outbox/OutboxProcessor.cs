@@ -4,7 +4,7 @@ using EFCore.PostgresExtensions.Extensions;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using MyJwtAuthServer.Contracts.Events;
+using MyJwtAuthServer.Contracts.Events.BusinessEvents;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Options;
 using Polly;

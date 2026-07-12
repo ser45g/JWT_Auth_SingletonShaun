@@ -1,5 +1,6 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using MyJwtAuthServer.Contracts.Events.BusinessEvents;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -32,6 +33,7 @@ builder.Services.AddMassTransit(configure =>
     configure.AddConsumer<WebhookTriggeredConsumer>();
     configure.AddConsumer<WebhookDispatchedConsumer>();
     configure.AddConsumer<WebhookSubscriptionAddedConsumer>();
+    configure.AddConsumer<WebhookDispatchablesConsumer>();
 
     configure.UsingRabbitMq((context, cfg) =>
     {
