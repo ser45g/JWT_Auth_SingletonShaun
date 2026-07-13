@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace MyJwtAuthService.Outbox
 {
-    public class OutboxProcessor(AppIdentityDbContext dbContext, IPublishEndpoint sender, IOptions<OutboxBackgroundServiceOptions> options)
+    public class OutboxProcessor(AppIdentityDbContext dbContext, IPublishEndpoint publishEndpoint, IOptions<OutboxBackgroundServiceOptions> options)
     {
         private static readonly ConcurrentDictionary<string, Type> TypeCache = new();
 
@@ -30,7 +30,7 @@ namespace MyJwtAuthService.Outbox
 
         public async Task<int> ProcessOutboxMessagesAsync(CancellationToken stoppingToken = default)
         {
-            List<OutboxMessage> nonProcessedMessages = await dbContext.OutboxMessages.AsNoTracking().Where(m => m.ProcessedOnUtc == null).OrderBy(m => m.OccuredOnUtc).Take(options.Value.BatchSize).ForUpdate<OutboxMessage>(LockBehavior.SkipLocked).ToListAsync(stoppingToken);
+            List<OutboxMessage> nonProcessedMessages = await dbContext.OutboxMessages.AsNoTracking().Where(m => m.ProcessedOnUtc == null && !m.IsUnprocessable).OrderBy(m => m.OccuredOnUtc).Take(options.Value.BatchSize).ForUpdate<OutboxMessage>(LockBehavior.SkipLocked).ToListAsync(stoppingToken);
 
             if (nonProcessedMessages.Count == 0)
             {
@@ -40,14 +40,14 @@ namespace MyJwtAuthService.Outbox
 
             var assembly = Assembly.GetAssembly(typeof(RegistrationEmailConfirmationSentEvent)) ?? throw new Exception("assembly was null");
 
-            nonProcessedMessages.ForEach(x => EnqueueMessage(x, updateQueue, assembly));
+            nonProcessedMessages.ForEach(x => EnqueueMessage(x, updateQueue, assembly, options.Value.MaxRetriesForMessage));
 
-            var entities = updateQueue.Select(x => x.Item1);
+            var entities = updateQueue.Select(x => x.Item1).ToList();
 
-            IEnumerable<object> events = updateQueue.Select(x => x.Item2).Where(x=>x!=null)!;
+            IEnumerable<object> events = updateQueue.Select(x => x.Item2).Where(x=>x!=null).ToList()!;
 
             await RetryPolicy.ExecuteAsync(async () =>
-                await sender.PublishBatch(events, cancellationToken: stoppingToken));
+                await publishEndpoint.PublishBatch(events, cancellationToken: stoppingToken));
 
             await using var transaction = await dbContext.Database.BeginTransactionAsync(stoppingToken);
 
@@ -55,7 +55,9 @@ namespace MyJwtAuthService.Outbox
                 await dbContext.BulkUpdateAsync(entities, new BulkConfig() { 
                     PropertiesToInclude = new List<string> {
                         nameof(OutboxMessage.ProcessedOnUtc),
-                        nameof(OutboxMessage.Error) 
+                        nameof(OutboxMessage.Error),
+                        nameof(OutboxMessage.RetryAttemptsCount),
+                        nameof(OutboxMessage.IsUnprocessable)
                     } 
                 }, cancellationToken: stoppingToken));
 
@@ -64,19 +66,24 @@ namespace MyJwtAuthService.Outbox
             return nonProcessedMessages.Count;
         }
 
-        public static void EnqueueMessage(OutboxMessage message, Queue<(OutboxMessage, object?)> updateQueue, Assembly assembly)
+        public static void EnqueueMessage(OutboxMessage message, Queue<(OutboxMessage, object?)> updateQueue, Assembly assembly, int maxRetryAttempts)
         {
             try
             {
                 Type? msgType = GetOrAddMessageType(message.Type, assembly);
 
                 var deserializedMessage = JsonSerializer.Deserialize(message.Content, msgType) ?? throw new Exception("Could not deserialize the message");
+                ArgumentException.ThrowIfNullOrEmpty("", "");
 
                 updateQueue.Enqueue((message with { ProcessedOnUtc = DateTime.UtcNow }, deserializedMessage));
             }
             catch (Exception ex)
             {
-                updateQueue.Enqueue((message with { ProcessedOnUtc = null, Error = ex.ToString() }, null));
+                var cannotBeProcessed = message.RetryAttemptsCount > maxRetryAttempts;
+
+                var newMessage = message with { ProcessedOnUtc = null, Error = ex.ToString(), RetryAttemptsCount = message.RetryAttemptsCount + 1, IsUnprocessable = cannotBeProcessed };
+
+                updateQueue.Enqueue((newMessage, null));
             }
         }
     }
