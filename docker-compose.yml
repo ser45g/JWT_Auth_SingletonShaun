@@ -108,9 +108,15 @@ services:
 
     - "OTEL_EXPORTER_OTLP_ENDPOINT=http://app-dashboard:18889"
 
+    - "AuthenticationOptions__AccessTokenSecret=${AUTHENTICATION_ACCESSTOKENSECRET}"
+    - "AuthenticationOptions__Issuer=https://localhost:8081"
+    - "AuthenticationOptions__Audience=https://localhost:8081"
+
     - "RabbitMqOptions__Url=amqp://rabbitmq:5672"
     - "RabbitMqOptions__Username=${RABBITMQ_USER}"
     - "RabbitMqOptions__Password=${RABBITMQ_PASSWORD}"
+    ports:
+    - 8084:8081
     depends_on:
       - webhooks-postgres
       - rabbitmq

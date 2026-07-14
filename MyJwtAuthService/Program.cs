@@ -20,7 +20,6 @@ using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
-using MyJwtAuthService.Webhooks;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -86,7 +85,6 @@ builder.Services.AddOpenTelemetry().ConfigureResource(config =>
     tracing.AddAspNetCoreInstrumentation()
         .AddEntityFrameworkCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddSource(DiagnosticConfig.ActivitySource.Name)
         .AddSource(MassTransit.Logging.DiagnosticHeaders.DefaultListenerName);
     tracing.AddOtlpExporter();
 
@@ -99,8 +97,6 @@ builder.Services.AddOpenTelemetry().ConfigureResource(config =>
 {
     logging.AddOtlpExporter();
 });
-
-builder.Services.AddScoped<WebhookDispatcher>();
 
 builder.Services.AddQuartz(options =>
 {
@@ -187,8 +183,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 });
 
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("admin", policy => policy.RequireRole("admin"))
-    .AddPolicy("webhook-subscriber", policy => policy.RequireRole("webhook-subscriber"));
+    .AddPolicy("admin", policy => policy.RequireRole("admin"));
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -211,7 +206,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.AddAuthenticationEndpoints();
-app.AddWebhookEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {

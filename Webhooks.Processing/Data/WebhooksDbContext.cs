@@ -23,6 +23,10 @@ namespace Webhooks.Processing.Data
 
             builder.Entity<WebhookSubscription>().ToTable("webhook_subscriptions", "webhooks");
 
+            builder.Entity<WebhookSubscription>().HasKey(x => x.Id);
+            builder.Entity<WebhookSubscription>().HasIndex(x=>new { x.EventType, x.WebhookUrl }).IsUnique();
+            builder.Entity<WebhookSubscription>().Property(x => x.WebhookUrl).HasMaxLength(1024).IsRequired();
+
             builder.Entity<WebhookDeliveryAttempt>().ToTable("delivery_attempts", "webhooks");
         }
     }

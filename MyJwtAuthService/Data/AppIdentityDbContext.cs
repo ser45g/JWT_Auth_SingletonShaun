@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Outbox;
-using MyJwtAuthService.Webhooks;
 
 namespace MyJwtAuthService.Data
 {

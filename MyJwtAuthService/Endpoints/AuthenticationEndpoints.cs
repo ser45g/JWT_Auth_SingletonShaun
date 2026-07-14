@@ -378,6 +378,8 @@ namespace MyJwtAuthService.Endpoints
                     if (identityResult.Succeeded)
                     {
                         await dbContext.InsertOutboxMessage(new UserEmailConfirmedEvent(user.UserName!, user.Email!, DateTime.UtcNow), cancellationToken: cancellationToken);
+
+                        await transaction.CommitAsync(cancellationToken);
                     }
                 }
                 else

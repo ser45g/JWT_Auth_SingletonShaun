@@ -1,6 +1,6 @@
 ﻿using MassTransit;
-using MyJwtAuthServer.Contracts.Events;
 using MyJwtAuthServer.Contracts.Events.BusinessEvents;
+using MyJwtAuthServer.Contracts.Events.Webhooks;
 using System.Text.Json;
 
 namespace Webhooks.Processing.Consumers
@@ -83,7 +83,7 @@ namespace Webhooks.Processing.Consumers
         {
             logger.LogInformation($"Sending webhook messages: {typeof(T).FullName}");
 
-            await publishEndpoint.Publish(new WebhookDispatchedEvent(nameof(T), JsonSerializer.Serialize(message), null), cancellationToken);
+            await publishEndpoint.Publish(new WebhookDispatchedEvent(typeof(T).Name, JsonSerializer.Serialize(message), null), cancellationToken);
         }
         
     }

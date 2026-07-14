@@ -73,7 +73,6 @@ namespace MyJwtAuthService.Outbox
                 Type? msgType = GetOrAddMessageType(message.Type, assembly);
 
                 var deserializedMessage = JsonSerializer.Deserialize(message.Content, msgType) ?? throw new Exception("Could not deserialize the message");
-                ArgumentException.ThrowIfNullOrEmpty("", "");
 
                 updateQueue.Enqueue((message with { ProcessedOnUtc = DateTime.UtcNow }, deserializedMessage));
             }

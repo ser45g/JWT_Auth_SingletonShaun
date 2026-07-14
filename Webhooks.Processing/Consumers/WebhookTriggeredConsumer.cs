@@ -1,5 +1,5 @@
 ﻿using MassTransit;
-using MyJwtAuthServer.Contracts.Events;
+using MyJwtAuthServer.Contracts.Events.Webhooks;
 using Webhooks.Processing.Data;
 using Webhooks.Processing.Models;
 
