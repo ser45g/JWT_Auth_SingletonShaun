@@ -12,7 +12,7 @@ namespace Webhooks.Processing.Consumers
         {
             var @event = context.Message;
 
-            var subscriptions = await dbContext.WebhookSubscriptions.AsNoTracking().Where(s => s.EventType == @event.EventType).ToListAsync(context.CancellationToken);
+            var subscriptions = await dbContext.WebhookSubscriptions.AsNoTracking().Where(s => s.EventType == "*" || s.EventType.StartsWith(@event.EventType)).ToListAsync(context.CancellationToken);
 
             if (subscriptions.Count == 0)
             {
