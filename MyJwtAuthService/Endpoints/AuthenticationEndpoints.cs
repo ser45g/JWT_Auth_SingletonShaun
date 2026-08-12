@@ -114,9 +114,13 @@ namespace MyJwtAuthService.Endpoints
                     throw new NotFoundException("User not found.");
                 }
 
-                await signInManager.SignOutAsync();
+                using var transaction = await dbContext.Database.BeginTransactionAsync();
 
                 await userManager.DeleteAsync(user);
+
+                await signInManager.SignOutAsync();
+
+                await transaction.CommitAsync();
 
                 return TypedResults.NoContent();
             }).RequireAuthorization();
