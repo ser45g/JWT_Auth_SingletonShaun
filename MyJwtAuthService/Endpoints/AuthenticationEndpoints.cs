@@ -1,18 +1,17 @@
 ﻿using FluentValidation;
 using FluentValidation.Results;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using MimeKit;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Extensions;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
-using MyJwtAuthService.Responses;
-using MyJwtAuthService.Services.Authenticators;
-using MyJwtAuthService.Services.RefreshTokenRepositories;
-using MyJwtAuthService.Services.TokenValidators;
 using System.Security.Claims;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using ValidationException = MyJwtAuthService.Exceptions.ValidationException;
 
 namespace MyJwtAuthService.Endpoints
@@ -61,8 +60,8 @@ namespace MyJwtAuthService.Endpoints
 
             });
 
-            authGroup.MapPost("/login", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] LoginRequest loginRequest,
-                UserManager<ApplicationUser> userRepository, Authenticator authenticator, SignInManager<ApplicationUser> signInManager, IValidator<LoginRequest> validator) =>
+            authGroup.MapPost("/login", async Task<Ok> ([FromBody] LoginRequest loginRequest,
+                UserManager<ApplicationUser> userRepository, HttpContext httpContext, SignInManager<ApplicationUser> signInManager, IValidator<LoginRequest> validator) =>
             {
                 ValidationResult validationResult = validator.Validate(loginRequest);
                 if (!validationResult.IsValid)
@@ -76,7 +75,7 @@ namespace MyJwtAuthService.Endpoints
                     throw new UnathorizedException();
                 }
 
-                var signInResult = await signInManager.CheckPasswordSignInAsync(user, loginRequest.Password, true);
+                var signInResult = await signInManager.PasswordSignInAsync(user, loginRequest.Password, loginRequest.RememberMe, true);
 
                 if (signInResult.IsLockedOut)
                 {
@@ -88,63 +87,19 @@ namespace MyJwtAuthService.Endpoints
                 {
                     throw new UnathorizedException();
                 }
+                await httpContext.ChallengeAsync(IdentityConstants.ApplicationScheme, new AuthenticationProperties() { });
 
-                AuthenticatedUserResponse response = await authenticator.Authenticate(user);
-
-                return TypedResults.Ok<AuthenticatedUserResponse>(response);
+                return TypedResults.Ok();
             });
 
-            authGroup.MapPost("/refresh", async Task<Ok<AuthenticatedUserResponse>> ([FromBody] RefreshRequest refreshRequest,
-                RefreshTokenValidator refreshTokenValidator,
-                IRefreshTokenRepository refreshTokenRepository,
-                UserManager<ApplicationUser> userRepository,
-                Authenticator authenticator, IValidator<RefreshRequest> validator) => {
-            
-                var validationResult = validator.Validate(refreshRequest);
-                if (!validationResult.IsValid)
-                {
-                    throw new ValidationException(validationResult.GetValidationErrors());
-                }
-                
-                bool isValidRefreshToken = refreshTokenValidator.Validate(refreshRequest.RefreshToken);
-                if (!isValidRefreshToken)
-                {
-                    throw new BadRequestException("Invalid refresh token.");
-                }
-
-                RefreshToken? refreshTokenDTO = await refreshTokenRepository.GetByToken(refreshRequest.RefreshToken);
-                if (refreshTokenDTO == null)
-                {
-                    throw new NotFoundException("Invalid refresh token.");
-                }
-
-                await refreshTokenRepository.Delete(refreshTokenDTO.Id);
-
-                ApplicationUser? user = await userRepository.FindByIdAsync(refreshTokenDTO.UserId.ToString());
-                if (user == null)
-                {
-                    throw new NotFoundException("User not found.");
-                }
-
-                AuthenticatedUserResponse response = await authenticator.Authenticate(user);
-
-                return TypedResults.Ok(response);
-            });
-
-            authGroup.MapDelete("/logout", async Task<NoContent> (HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository) => {
-                string? rawUserId = httpContext.User.FindFirstValue("id");
-
-                if (!Guid.TryParse(rawUserId, out Guid userId))
-                {
-                    throw new UnathorizedException();
-                }
-
-                await refreshTokenRepository.DeleteAll(userId);
+            authGroup.MapDelete("/logout", async Task<NoContent> (HttpContext httpContext, SignInManager <ApplicationUser> signInManager) => 
+            {
+                await signInManager.SignOutAsync();
 
                 return TypedResults.NoContent();
             }).RequireAuthorization();
 
-            authGroup.MapDelete("/delete-account", async Task<NoContent> (UserManager<ApplicationUser> userManager, HttpContext httpContext, IRefreshTokenRepository refreshTokenRepository, AppIdentityDbContext dbContext) =>
+            authGroup.MapDelete("/delete-account", async Task<NoContent> (UserManager<ApplicationUser> userManager, HttpContext httpContext, SignInManager < ApplicationUser > signInManager, AppIdentityDbContext dbContext) =>
             {
                 string? rawUserId = httpContext.User.FindFirstValue("id");
 
@@ -153,10 +108,13 @@ namespace MyJwtAuthService.Endpoints
                     throw new UnathorizedException();
                 }
                 ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
+
                 if (user == null)
                 {
                     throw new NotFoundException("User not found.");
                 }
+
+                await signInManager.SignOutAsync();
 
                 await userManager.DeleteAsync(user);
 

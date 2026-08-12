@@ -2,20 +2,12 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using MyJwtAuthService;
 using MyJwtAuthService.Data;
-using MyJwtAuthService.Exceptions;
 using MyJwtAuthService.Endpoints;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Requests;
-using MyJwtAuthService.Services.Authenticators;
-using MyJwtAuthService.Services.RefreshTokenRepositories;
-using MyJwtAuthService.Services.TokenGenerators;
-using MyJwtAuthService.Services.TokenValidators;
 using MyJwtAuthService.Validators;
 using Scalar.AspNetCore;
-using System.Text;
 using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,34 +34,6 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
 builder.Services.AddScoped<IValidator<RegisterRequest>, RegisterRequestValidator>();
-builder.Services.AddScoped<IValidator<RefreshRequest>, RefreshRequestValidator>();
-
-builder.Services.AddIdentityCore<ApplicationUser>(o =>
-{
-    o.User.RequireUniqueEmail = true;
-
-    o.Password.RequireDigit = true;
-    o.Password.RequireNonAlphanumeric = true;
-    o.Password.RequireUppercase = true;
-    o.Password.RequiredLength = 8;
-
-    o.Lockout.MaxFailedAccessAttempts = 5;
-    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
-    
-}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>();
-
-builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddScoped<AuthenticationConfiguration>(s=>s.GetRequiredService<IOptions<AuthenticationConfiguration>>().Value);
-
-var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationConfiguration>();
-
-builder.Services.AddScoped<AccessTokenGenerator>();
-builder.Services.AddScoped<RefreshTokenGenerator>();
-builder.Services.AddScoped<RefreshTokenValidator>();
-builder.Services.AddScoped<Authenticator>();
-builder.Services.AddScoped<TokenGenerator>();
-builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -82,19 +46,36 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
+//To set up cookie auth
+builder.Services.AddIdentity<ApplicationUser, Role>(o =>
 {
-    o.TokenValidationParameters = new TokenValidationParameters()
-    {
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authenticationConfiguration.AccessTokenSecret)),
-        ValidIssuer = authenticationConfiguration.Issuer,
-        ValidAudience = authenticationConfiguration.Audience,
-        ValidateIssuerSigningKey = true,
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ClockSkew = TimeSpan.Zero
-    };
+    o.User.RequireUniqueEmail = true;
+
+    o.Password.RequireDigit = true;
+    o.Password.RequireNonAlphanumeric = true;
+    o.Password.RequireUppercase = true;
+    o.Password.RequiredLength = 8;
+
+    o.Lockout.MaxFailedAccessAttempts = 5;
+    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+
+}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>().AddDefaultTokenProviders();
+
+// Configure the Identity cookie
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.Domain = "localhost";
+    options.Cookie.Path = "/";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.ExpireTimeSpan = TimeSpan.FromDays(14); // This should be set!
+    options.SlidingExpiration = true;
+    options.LoginPath = "/auth/login"; // Optional
+    options.LogoutPath = "/auth/logout"; // Optional
 });
+
 
 builder.Services.AddAuthorization(options => {});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
