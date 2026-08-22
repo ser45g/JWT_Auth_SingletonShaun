@@ -1,6 +1,7 @@
 import { makeAutoObservable } from "mobx";
 import AuthService from "../services/AuthService";
 import type AccountInfoResponse from "../models/responses/AccountInfoResponse";
+import { makePersistable } from "mobx-persist-store";
 
 export default class Store{
   isAuthenticated: boolean=false;
@@ -8,6 +9,11 @@ export default class Store{
 
   constructor(){
     makeAutoObservable(this);
+    makePersistable(this, {
+      name: 'AuthStore',
+      properties: ['user', 'isAuthenticated'],
+      storage: window.localStorage,
+    });
   }
 
   setIsAuthenticated(isAuthenticated:boolean){

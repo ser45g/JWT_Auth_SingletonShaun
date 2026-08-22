@@ -92,7 +92,7 @@ function App() {
                 <div>
                   <h4 className='text-sm'>{"Id: "+ store.user.id}</h4>
                   <h4 className='text-sm'>{"Email: "+ store.user.email}</h4>
-                  <h4 className='text-sm'>{"Is email confirmed: "+ store.user.isEmailConfirmed}</h4>
+                  <h4 className='text-sm'>{"Is email confirmed: "+ store.user.emailConfirmed}</h4>
                   <h4 className='text-sm'>{"Username: "+ store.user.username}</h4>
                 </div>
                 :null}

@@ -2,6 +2,6 @@ export default interface AccountInfoResponse{
   id: string;
   username:string;
   email:string;
-  isEmailConfirmed: boolean;
+  emailConfirmed: boolean;
   roles: string[];
 }
