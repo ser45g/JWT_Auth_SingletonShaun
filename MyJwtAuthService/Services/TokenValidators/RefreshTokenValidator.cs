@@ -1,5 +1,6 @@
-﻿using Microsoft.IdentityModel.Tokens;
-using MyJwtAuthService.Models;
+﻿using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using MyJwtAuthService.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -7,20 +8,22 @@ namespace MyJwtAuthService.Services.TokenValidators
 {
     public class RefreshTokenValidator
     {
-        private readonly AuthenticationConfiguration _configuration;
+        private readonly IOptions<AuthenticationOptions> _configuration;
 
-        public RefreshTokenValidator(AuthenticationConfiguration configuration)
+        public RefreshTokenValidator(IOptions<AuthenticationOptions> configuration)
         {
             _configuration = configuration;
         }
 
         public bool Validate(string refreshToken)
         {
+            var config = _configuration.Value;
+
             TokenValidationParameters validationParameters = new TokenValidationParameters()
             {
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration.RefreshTokenSecret)),
-                ValidIssuer = _configuration.Issuer,
-                ValidAudience = _configuration.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config.RefreshTokenSecret)),
+                ValidIssuer = config.Issuer,
+                ValidAudience = config.Audience,
                 ValidateIssuerSigningKey = true,
                 ValidateIssuer = true,
                 ValidateAudience = true,

@@ -1,13 +1,14 @@
-﻿using MyJwtAuthService.Models;
+﻿using Microsoft.Extensions.Options;
+using MyJwtAuthService.Options;
 
 namespace MyJwtAuthService.Services.TokenGenerators
 {
     public class RefreshTokenGenerator
     {
-        private readonly AuthenticationConfiguration _configuration;
+        private readonly IOptions<AuthenticationOptions> _configuration;
         private readonly TokenGenerator _tokenGenerator;
 
-        public RefreshTokenGenerator(AuthenticationConfiguration configuration, TokenGenerator tokenGenerator)
+        public RefreshTokenGenerator(IOptions<AuthenticationOptions> configuration, TokenGenerator tokenGenerator)
         {
             _configuration = configuration;
             _tokenGenerator = tokenGenerator;
@@ -15,12 +16,13 @@ namespace MyJwtAuthService.Services.TokenGenerators
 
         public string GenerateToken()
         {
-            DateTime expirationTime = DateTime.UtcNow.AddMinutes(_configuration.RefreshTokenExpirationMinutes);
+            var config = _configuration.Value;
+            DateTime expirationTime = DateTime.UtcNow.AddMinutes(config.RefreshTokenExpirationMinutes);
 
             return _tokenGenerator.GenerateToken(
-                _configuration.RefreshTokenSecret,
-                _configuration.Issuer,
-                _configuration.Audience,
+                config.RefreshTokenSecret,
+                config.Issuer,
+                config.Audience,
                 expirationTime);
         }
     }

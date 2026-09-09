@@ -1,57 +1,100 @@
+using EFCore.PostgresExtensions.Extensions;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService.Data;
+using MyJwtAuthService.Endpoints;
+using MyJwtAuthService.Extensions;
+using MyJwtAuthService.Jobs;
 using MyJwtAuthService.Models;
+using MyJwtAuthService.Options;
+using MyJwtAuthService.Outbox;
 using MyJwtAuthService.Services.Authenticators;
+using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
+using Quartz;
 using Scalar.AspNetCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddValidationOptions(builder.Configuration);
+
+string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationOptions>();
+ArgumentNullException.ThrowIfNull(authenticationConfiguration, nameof(authenticationConfiguration));
+
+var outboxBacgroundServiceConfiguration = builder.Configuration.GetSection("OutboxBackgroundService").Get<OutboxBackgroundServiceOptions>();
+ArgumentNullException.ThrowIfNull(outboxBacgroundServiceConfiguration, nameof(outboxBacgroundServiceConfiguration));
+
+var rateLimitingOptions = builder.Configuration.GetSection("RateLimitingOptions").Get<RateLimitingOptions>();
+ArgumentNullException.ThrowIfNull(rateLimitingOptions, nameof(rateLimitingOptions));
+
+var identityDbConnectionString = builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext));
+var quartzDbConnectionString = builder.Configuration.GetConnectionString("Quartz");
+
 builder.Services.AddDbContext<AppIdentityDbContext>(o => {
-    o.UseNpgsql(builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext)));
+    o.UseNpgsql(identityDbConnectionString).UseQueryLocks();
 });
 
-builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-builder.Services.AddOptions<CorsConfiguration>().Bind(builder.Configuration.GetSection("Cors")).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddMediatR(o =>
+{
+    o.RegisterServicesFromAssemblyContaining<Program>();
+});
+
+builder.Services.AddQuartz(options =>
+{
+    var jobKey = "outbox-job";
+
+    options.AddJob<OutboxBackgroundJob>(options =>
+    {
+        options.WithIdentity(new JobKey(jobKey));
+    });
+
+    options.AddTrigger(opts => opts
+      .ForJob(jobKey)
+      .StartNow()
+      .WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(outboxBacgroundServiceConfiguration.IntervalSeconds)).RepeatForever())
+    );
+
+    options.UsePersistentStore(c =>
+    {
+        c.UseNewtonsoftJsonSerializer();
+        c.ProvisionSchema();
+        c.UsePostgres(postgres =>
+        {
+            postgres.ConnectionString = quartzDbConnectionString;
+        });
+    });
+});
+
+builder.Services.AddQuartzHostedService(options =>
+{
+    // When shutting down we want jobs to complete gracefully
+    options.WaitForJobsToComplete = true;
+});
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        string[] allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
 
-builder.Services.AddIdentityCore<ApplicationUser>(o =>
-{
-    o.User.RequireUniqueEmail = true;
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-    o.Password.RequireDigit = true;
-    o.Password.RequireNonAlphanumeric = true;
-    o.Password.RequireUppercase = true;
-    o.Password.RequiredLength = 8;
+builder.Services.AddAppRateLimiting(rateLimitingOptions);
 
-    o.Lockout.MaxFailedAccessAttempts = 5;
-    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
-    
-}).AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddEntityFrameworkStores<AppIdentityDbContext>();
-
-builder.Services.AddOptions<AuthenticationConfiguration>().Bind(builder.Configuration.GetSection("Authentication")).ValidateDataAnnotations().ValidateOnStart();
-
-builder.Services.AddScoped<AuthenticationConfiguration>(s=>s.GetRequiredService<IOptions<AuthenticationConfiguration>>().Value);
-
-var authenticationConfiguration = builder.Configuration.GetSection("Authentication").Get<AuthenticationConfiguration>();
+builder.Services.AddIdentityCore<ApplicationUser>().AddRoles<Role>().AddSignInManager<SignInManager<ApplicationUser>>().AddDefaultTokenProviders().AddEntityFrameworkStores<AppIdentityDbContext>();
 
 builder.Services.AddScoped<AccessTokenGenerator>();
 builder.Services.AddScoped<RefreshTokenGenerator>();
@@ -59,17 +102,23 @@ builder.Services.AddScoped<RefreshTokenValidator>();
 builder.Services.AddScoped<Authenticator>();
 builder.Services.AddScoped<TokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenRepository, DatabaseRefreshTokenRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailSender<ApplicationUser>, EmailSender>();
+builder.Services.AddScoped<IApplicationLinkGenerator, ApplicationLinkGenerator>();
+
+builder.Services.AddScoped<OutboxProcessor>();
 
 builder.Services.AddProblemDetails(options =>
 {
     options.CustomizeProblemDetails = ctx =>
     {
-        // Always include useful metadata
         ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
         ctx.ProblemDetails.Extensions["timestamp"] = DateTime.UtcNow;
         ctx.ProblemDetails.Instance = $"{ctx.HttpContext.Request.Method} {ctx.HttpContext.Request.Path}";
     };
 });
+
+builder.Services.AddSingleton<ProblemDetailsFactory, DefaultProblemDetailsFactory>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
@@ -83,11 +132,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateAudience = true,
         ClockSkew = TimeSpan.Zero
     };
-    
 });
 
 builder.Services.AddAuthorization(options => {});
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -98,6 +147,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
+app.UseRateLimiter();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -105,16 +155,15 @@ app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
+app.AddAuthenticationEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetService<AppIdentityDbContext>();
-    ArgumentNullException.ThrowIfNull(context, nameof(context));
-    using (context) {
-        await context.Database.MigrateAsync();
-    }
+    await using var identityContext = scope.ServiceProvider.GetService<AppIdentityDbContext>();
+    ArgumentNullException.ThrowIfNull(identityContext, nameof(identityContext));
+    await identityContext.Database.MigrateAsync();
 }
-   
+
 app.Run();
+
+public partial class Program { }
