@@ -5,7 +5,8 @@
       "commandVersion": "1.0",
       "serviceActions": {
         "myjwtauthservice": "StartDebugging",
-        "webhooks.processing": "StartDebugging"
+        "webhooks.processing": "StartDebugging",
+        "webhooks.client": "StartDebugging"
       }
     }
   }

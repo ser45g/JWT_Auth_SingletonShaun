@@ -13,6 +13,8 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJwtAuthServer.Contracts", "MyJwtAuthServer.Contracts\MyJwtAuthServer.Contracts.csproj", "{BDF2B442-944E-477E-B158-AB2A32DC8107}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webhooks.Client", "Webhooks.Client\Webhooks.Client.csproj", "{45958932-65CE-D104-4229-E8B8C79CDF58}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BDF2B442-944E-477E-B158-AB2A32DC8107}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45958932-65CE-D104-4229-E8B8C79CDF58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45958932-65CE-D104-4229-E8B8C79CDF58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45958932-65CE-D104-4229-E8B8C79CDF58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45958932-65CE-D104-4229-E8B8C79CDF58}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

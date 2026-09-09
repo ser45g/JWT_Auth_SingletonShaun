@@ -16,11 +16,11 @@ namespace Webhooks.Processing.Consumers
             WebhookDeliveryAttempt? deliveryAttempt = null;
             try
             {
-                var response = await httpClient.PostAsJsonAsync(@event.WebhookUrl, @event.Data, context.CancellationToken);
+                var response = await httpClient.PostAsJsonAsync($"{@event.WebhookUrl}/eventType={@event.EventType}", @event.Data, context.CancellationToken);
                 deliveryAttempt = new WebhookDeliveryAttempt(Guid.NewGuid(), @event.SubscriptionId, (int)response.StatusCode, response.IsSuccessStatusCode, DateTime.UtcNow);
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 deliveryAttempt = new WebhookDeliveryAttempt(Guid.NewGuid(), @event.SubscriptionId, null, false, DateTime.UtcNow);
             }

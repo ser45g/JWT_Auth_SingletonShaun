@@ -1,6 +1,11 @@
-@Webhooks.Client_HostAddress = http://localhost:5168
+@Webhooks.Client_HostAddress = https://localhost:8085
 
 GET {{Webhooks.Client_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+POST {{Webhooks.Client_HostAddress}}/webhooks/event1
+Accept: application/json
+{
+  "Jack":""
+}

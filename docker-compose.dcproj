@@ -13,10 +13,15 @@
     <None Include=".env.local" />
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
+    <None Include="certs" />
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
+    <None Include="Makefile" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="certs\" />
   </ItemGroup>
 </Project>

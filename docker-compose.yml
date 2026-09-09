@@ -4,6 +4,10 @@ services:
     build:
       context: MyJwtAuthService
       dockerfile: Dockerfile
+    networks:
+    - app-network
+    volumes:
+    - ./certs:/https/
     environment:
     - "ConnectionStrings__AppIdentityDbContext=User Id=${IDENTITY_DB_POSTGRES_USER};Password=${IDENTITY_DB_POSTGRES_PASSWORD};Server=identitydb;Port=5432;Database=${IDENTITY_DB_POSTGRES_NAME}"
     - "ConnectionStrings__Quartz=User Id=${QUARTZ_DB_POSTGRES_USER};Password=${QUARTZ_DB_POSTGRES_PASSWORD};Server=quartz-postgres:5432;Database=${QUARTZ_DB_POSTGRES_NAME}"
@@ -30,12 +34,18 @@ services:
     - "RabbitMqOptions__Url=amqp://rabbitmq:5672"
     - "RabbitMqOptions__Username=${RABBITMQ_USER}"
     - "RabbitMqOptions__Password=${RABBITMQ_PASSWORD}"
+
+    - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/root.pfx
+    - ASPNETCORE_Kestrel__Certificates__Default__Password=SOLOMONKEY_BLUD
+    - ASPNETCORE_HTTPS_PORTS=443
+    - ASPNETCORE_URLS=https://+;http://+
+
     depends_on:
       - identitydb
       - papercut
       - quartz-postgres
     ports:
-      - 8081:8081
+      - 8081:443
 
   identitydb:
     container_name: identitydb
@@ -44,11 +54,15 @@ services:
       POSTGRES_DB: ${IDENTITY_DB_POSTGRES_NAME}
       POSTGRES_USER: ${IDENTITY_DB_POSTGRES_USER}
       POSTGRES_PASSWORD: ${IDENTITY_DB_POSTGRES_PASSWORD}
+    networks:
+      - app-network
     volumes:
       - identity-data:/var/lib/postgresql
   quartz-postgres:
     container_name: quartz-postgres
     image: postgres:19beta1
+    networks:
+      - app-network
     environment:
       POSTGRES_DB: ${QUARTZ_DB_POSTGRES_NAME}
       POSTGRES_USER: ${QUARTZ_DB_POSTGRES_USER}
@@ -58,10 +72,14 @@ services:
   papercut:
     image: changemakerstudiosus/papercut-smtp:7.7.3-alpha.7
     container_name: papercut_smtp
+    networks:
+      - app-network
     ports:
       - "8093:8080"
   pgadmin:
     container_name: pgadmin
+    networks:
+      - app-network
     image: dpage/pgadmin4:2026-06-18-3
     environment:
       - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
@@ -75,11 +93,15 @@ services:
       - identitydb
   app-dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:13
+    networks:
+      - app-network
     ports:
       - 18888:18888
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
+    networks:
+      - app-network
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
@@ -112,14 +134,23 @@ services:
     - "AuthenticationOptions__Issuer=https://localhost:8081"
     - "AuthenticationOptions__Audience=https://localhost:8081"
 
+    - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/root.pfx
+    - ASPNETCORE_Kestrel__Certificates__Default__Password=SOLOMONKEY_BLUD
+    - ASPNETCORE_HTTPS_PORTS=443
+    - ASPNETCORE_URLS=https://+;http://+
+
     - "RabbitMqOptions__Url=amqp://rabbitmq:5672"
     - "RabbitMqOptions__Username=${RABBITMQ_USER}"
     - "RabbitMqOptions__Password=${RABBITMQ_PASSWORD}"
+    volumes:
+    - ./certs:/https/
     ports:
-    - 8084:8081
+    - 8084:443
     depends_on:
       - webhooks-postgres
       - rabbitmq
+    networks:
+      - app-network
   webhooks-postgres:
     container_name: webhooks-postgres
     image: postgres:19beta1
@@ -129,6 +160,25 @@ services:
       POSTGRES_PASSWORD: ${WEBHOOKS_DB_POSTGRES_PASSWORD}
     volumes:
       - webhooks-postgres-data:/var/lib/postgresql
+    networks:
+      - app-network
+
+  webhooks.client:
+    image: ${DOCKER_REGISTRY-}webhooksclient
+    build:
+      context: .
+      dockerfile: Webhooks.Client/Dockerfile
+    volumes:
+    - ./certs:/https/
+    environment:
+    - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/root.pfx
+    - ASPNETCORE_Kestrel__Certificates__Default__Password=SOLOMONKEY_BLUD
+    - ASPNETCORE_HTTPS_PORTS=443
+    - ASPNETCORE_URLS=https://+;http://+
+    ports:
+      - 8085:443
+    networks:
+      - app-network
 
 volumes:
   identity-data:
@@ -136,5 +186,8 @@ volumes:
   pgadmin:
   webhooks-postgres-data:
   rabbitmq_data:
+networks:
+  app-network:
+    driver: bridge
 
 
