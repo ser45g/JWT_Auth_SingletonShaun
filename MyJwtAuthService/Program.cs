@@ -1,17 +1,14 @@
 using EFCore.PostgresExtensions.Extensions;
 using FluentValidation;
-using Hangfire;
-using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyJwtAuthService.Data;
 using MyJwtAuthService.Endpoints;
 using MyJwtAuthService.Extensions;
-using MyJwtAuthService.Helpers;
+using MyJwtAuthService.Jobs;
 using MyJwtAuthService.Models;
 using MyJwtAuthService.Options;
 using MyJwtAuthService.Outbox;
@@ -20,6 +17,7 @@ using MyJwtAuthService.Services.EmailSenders;
 using MyJwtAuthService.Services.RefreshTokenRepositories;
 using MyJwtAuthService.Services.TokenGenerators;
 using MyJwtAuthService.Services.TokenValidators;
+using Quartz;
 using Scalar.AspNetCore;
 using System.Text;
 
@@ -39,14 +37,10 @@ var rateLimitingOptions = builder.Configuration.GetSection("RateLimitingOptions"
 ArgumentNullException.ThrowIfNull(rateLimitingOptions, nameof(rateLimitingOptions));
 
 var identityDbConnectionString = builder.Configuration.GetConnectionString(nameof(AppIdentityDbContext));
-var hangfireDbConnectionString = builder.Configuration.GetConnectionString("Hangfire");
+var quartzDbConnectionString = builder.Configuration.GetConnectionString("Quartz");
 
 builder.Services.AddDbContext<AppIdentityDbContext>(o => {
     o.UseNpgsql(identityDbConnectionString).UseQueryLocks();
-});
-
-builder.Services.AddDbContext<HangfireDbContext>(o => {
-    o.UseNpgsql(hangfireDbConnectionString);
 });
 
 builder.Services.AddOpenApi();
@@ -56,21 +50,36 @@ builder.Services.AddMediatR(o =>
     o.RegisterServicesFromAssemblyContaining<Program>();
 });
 
-builder.Services.AddHangfire(config =>
+builder.Services.AddQuartz(options =>
 {
-    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180).UseSimpleAssemblyNameTypeSerializer().UseRecommendedSerializerSettings().UsePostgreSqlStorage(o =>
-          {
-              o.UseNpgsqlConnection(hangfireDbConnectionString);
-          }, new PostgreSqlStorageOptions
-          {
-              PrepareSchemaIfNecessary = true,
-              SchemaName = "Schema"
-          });
+    var jobKey = "outbox-job";
+
+    options.AddJob<OutboxBackgroundJob>(options =>
+    {
+        options.WithIdentity(new JobKey(jobKey));
+    });
+
+    options.AddTrigger(opts => opts
+      .ForJob(jobKey)
+      .StartNow()
+      .WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(outboxBacgroundServiceConfiguration.IntervalSeconds)).RepeatForever())
+    );
+
+    options.UsePersistentStore(c =>
+    {
+        c.UseNewtonsoftJsonSerializer();
+        c.ProvisionSchema();
+        c.UsePostgres(postgres =>
+        {
+            postgres.ConnectionString = quartzDbConnectionString;
+        });
+    });
 });
-builder.Services.AddHangfireServer(o =>
+
+builder.Services.AddQuartzHostedService(options =>
 {
-    o.SchedulePollingInterval = TimeSpan.FromSeconds(outboxBacgroundServiceConfiguration.IntervalSeconds);
-    o.MaxDegreeOfParallelismForSchedulers = outboxBacgroundServiceConfiguration.MaxDegreeOfParallelism;
+    // When shutting down we want jobs to complete gracefully
+    options.WaitForJobsToComplete = true;
 });
 
 builder.Services.AddCors(options =>
@@ -134,9 +143,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
-    app.MapHangfireDashboard("/hangfire", new DashboardOptions() {
-        Authorization = []
-    });
 }
 app.UseHttpsRedirection();
 app.UseRouting();
@@ -156,14 +162,6 @@ using (var scope = app.Services.CreateScope())
     await using var identityContext = scope.ServiceProvider.GetService<AppIdentityDbContext>();
     ArgumentNullException.ThrowIfNull(identityContext, nameof(identityContext));
     await identityContext.Database.MigrateAsync();
-
-    await using var hangfireContext = scope.ServiceProvider.GetService<HangfireDbContext>();
-    ArgumentNullException.ThrowIfNull(hangfireContext, nameof(hangfireContext));
-    await hangfireContext.Database.MigrateAsync();
-
-    var recurringJobManager = scope.ServiceProvider.GetService<IRecurringJobManager>();
-    
-    recurringJobManager.AddOrUpdate<OutboxProcessor>("outbox-job", x => x.ProcessOutboxMessagesAsync(CancellationToken.None), $"*/{outboxBacgroundServiceConfiguration.IntervalSeconds} * * * * *");
 }
 
 app.Run();
