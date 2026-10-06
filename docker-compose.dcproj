@@ -16,5 +16,8 @@
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
     <None Include="docker-compose.yml" />
+    <None Include="README.md" />
+    <None Include="readme_img\endpoinst.png" />
+    <None Include="readme_img\tests.png" />
   </ItemGroup>
 </Project>
