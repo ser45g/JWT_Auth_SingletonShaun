@@ -13,15 +13,22 @@
     <None Include=".env.local" />
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
-    <None Include="certs" />
+    <None Include="certs\root.pfx" />
     <None Include="docker-compose.override.yml">
       <DependentUpon>docker-compose.yml</DependentUpon>
     </None>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
     <None Include="Makefile" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="certs\" />
+    <None Include="README.md" />
+    <None Include="readme_img\access_token.png" />
+    <None Include="readme_img\auth_service.png" />
+    <None Include="readme_img\confirm_email.png" />
+    <None Include="readme_img\create_webhook.png" />
+    <None Include="readme_img\endpoinst.png" />
+    <None Include="readme_img\register.png" />
+    <None Include="readme_img\subscription_service.png" />
+    <None Include="readme_img\tests.png" />
+    <None Include="readme_img\webhook.png" />
   </ItemGroup>
 </Project>

@@ -139,24 +139,6 @@ webhooksGroup.MapPost("subscriptions", async Task<Results<Created, BadRequest<st
     return TypedResults.Created();
 }).RequireAuthorization().WithName("add-subscription").WithDescription("Allows users to add a webhook subscription");
 
-if (builder.Environment.IsDevelopment())
-{
-    webhooksGroup.MapGet("test", async Task<Ok> (IPublishEndpoint publishEndpoint, CancellationToken cancellationToken) =>
-    {
-        await publishEndpoint.Publish(new WebhookDispatchedEvent("test.event", new { Message = $"This is a test event. {DateTime.UtcNow}" }, null), cancellationToken);
-
-        return TypedResults.Ok();
-    });
-
-    webhooksGroup.MapGet("test-connection", async Task<Ok> (IHttpClientFactory clientFactory, CancellationToken cancellationToken) =>
-    {
-        using var client = clientFactory.CreateClient();
-
-        await client.GetAsync("https://webhooks.client:443/health", cancellationToken);
-        return TypedResults.Ok();
-    });
-}
-
 using (var scope = app.Services.CreateScope())
 {
     await using var webhooksDbContext = scope.ServiceProvider.GetService<WebhooksDbContext>();
