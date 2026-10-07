@@ -1,5 +1,6 @@
-import { useContext, useState } from 'react';
-import { StoreContext } from '../main';
+import { useState } from 'react';
+import { useRegister } from '../hooks/user-register';
+import type RegisterRequest from '../models/requests/RegisterRequest';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -10,24 +11,19 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
 
-  const [isLoading, setIsLoading] = useState(false);
-  const { store } = useContext(StoreContext);
-  
+  const register = useRegister();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
+   
     try {
-      await store.register(email, password);
-      onClose();
+      await register.mutateAsync({email, password} as RegisterRequest)
+      
       setEmail('');
       setPassword('');
     } catch (err) {
-      setError('Registration failed. Please try again.');
-    }finally{
-      setIsLoading(false);
+    
     }
   };
 
@@ -63,8 +59,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               required
             />
           </div>
-          {error && (
-            <div className="mb-4 text-red-500 text-sm">{error}</div>
+          {register.isSuccess && (
+            <div className="text-green-600">Registration is successful! You need to confirm your email (log in to your email account and follow a link), and then you will be able to sign in to your account </div>
+          )}
+          {register.error && (
+            <div className="mb-4 text-red-500 text-sm">{register.error.message}</div>
           )}
           <div className="flex justify-end space-x-3">
             <button
@@ -76,10 +75,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={register.isPending}
               className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
             >
-              {isLoading ? 'Registering...' : 'Register'}
+              {register.isPending ? 'Registering...' : 'Register'}
             </button>
           </div>
         </form>

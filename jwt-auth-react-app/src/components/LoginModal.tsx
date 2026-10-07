@@ -1,5 +1,6 @@
-import { useContext, useState } from 'react';
-import { StoreContext } from '../main';
+import { useState } from 'react';
+import { useLogin } from '../hooks/user-login';
+import type LoginRequest from '../models/requests/LoginRequest';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -10,25 +11,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({isOpen, onClose }) => {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { store } = useContext(StoreContext);
 
+  const login = useLogin();
+
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
+
     try {
-      await store.login(email, password);
+      await login.mutateAsync({email, password} as LoginRequest);
       onClose();
       setEmail('');
       setPassword('');
     } catch (err) {
-      setError('Login failed. Please try again.');
-    }finally{
-      setIsLoading(false);
+      
     }
   };
+  
   if (!isOpen) return null;
 
   return (
@@ -60,8 +59,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({isOpen, onClose }) => {
               required
             />
           </div>
-          {error && (
-            <div className="mb-4 text-red-500 text-sm">{error}</div>
+          {login.error && (
+            <div className="mb-4 text-red-500 text-sm">{login.error.message}</div>
           )}
           <div className="flex justify-end space-x-3">
             <button
@@ -73,10 +72,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({isOpen, onClose }) => {
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={login.isPending}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {login.isPending ? 'Logging in...' : 'Login'}
             </button>
           </div>
         </form>

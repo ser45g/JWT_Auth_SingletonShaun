@@ -2,19 +2,13 @@ import { createContext, StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import Store from './store/store.ts';
-
-type State= {
-  store:Store;
-}
-const store = new Store();
-export const StoreContext = createContext<State>({store});
+import { queryClient } from './react-query/query-client.ts';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <StoreContext.Provider value={{store}}>
-
+    <QueryClientProvider client={queryClient}>
       <App />
-    </StoreContext.Provider>
+    </QueryClientProvider>
   </StrictMode>,
 )

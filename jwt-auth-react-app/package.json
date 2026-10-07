@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.104.1",
     "axios": "^1.11.0",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",

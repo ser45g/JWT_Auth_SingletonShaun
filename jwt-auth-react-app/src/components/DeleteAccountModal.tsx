@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { StoreContext } from '../main';
+import { useDeleteAccount } from '../hooks/use-delete-account';
 
 interface DeleteAccountModalProps {
   isOpen: boolean;
@@ -10,24 +10,22 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
   
   const [confirmText, setConfirmText] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { store } = useContext(StoreContext);
+  
+  const deleteAccount = useDeleteAccount();
 
   const handleDelete = async () => {
     if (confirmText !== 'delete my account') {
       setError('Please type "delete my account" to confirm');
       return;
     }
-    setIsLoading(true);
-    setError('');
     try {
-      await store.deleteAccount();
+      await deleteAccount.mutateAsync();
+
+      
       onClose();
       setConfirmText('');
     } catch (err) {
-      setError('Failed to delete account. Please try again.');
-    }finally{
-      setIsLoading(false)
+     
     }
   };
 
@@ -50,6 +48,10 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
         {error && (
           <div className="mb-4 text-red-500 text-sm">{error}</div>
         )}
+
+        {deleteAccount.error &&(
+          <div className="mb-4 text-red-500 text-sm">{deleteAccount.error.message}</div>
+        )}
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
@@ -59,10 +61,10 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
           </button>
           <button
             onClick={handleDelete}
-            disabled={isLoading}
+            disabled={deleteAccount.isPending}
             className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
           >
-            {isLoading ? 'Deleting...' : 'Delete Account'}
+            {deleteAccount.isPending ? 'Deleting...' : 'Delete Account'}
           </button>
         </div>
       </div>

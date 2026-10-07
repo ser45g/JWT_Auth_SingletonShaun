@@ -1,49 +1,55 @@
 import axios, { type AxiosResponse } from "axios";
 import type LoginResponse from "../models/responses/LoginResponse";
 import type RefreshRequest from "../models/requests/RefreshRequest";
+import { tokenStore } from "../store/token-store";
 
 const BASE_URL = "https://localhost:8081/auth";
 
 const $api = axios.create({
-  withCredentials:true,
+  withCredentials: true,
   baseURL: BASE_URL,
-  headers:{
-    "Content-Type":"application/json"
-  }
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-$api.interceptors.request.use((config)=>{
-  if(config.headers)
-    config.headers.Authorization = `Bearer ${localStorage.getItem("access_token")}`;
+$api.interceptors.request.use((config) => {
+  const access_token = tokenStore.get()?.access_token;
+
+  if (config.headers)
+    config.headers.Authorization = `Bearer ${access_token}`;
+
   return config;
 });
 
-$api.interceptors.response.use(response => response, async (error) => {
-  const { response, config } = error
+$api.interceptors.response.use((response) => response,
+  async (error) => {
+    const { response, config } = error;
 
-  if (response.status !== 401) {
-    return Promise.reject(error)
-  }
-  console.log(config.url)
-  if (config.url === '/refresh') {
-    return Promise.reject(error);
-  }
-  const refreshToken=localStorage.getItem("refresh_token");
+    if (response.status !== 401) {
+      return Promise.reject(error);
+    }
+ 
+    if (config.url === "/refresh") {
+      return Promise.reject(error);
+    }
 
-  //console.log("here")
-  // Use a 'clean' instance of axios without the interceptor to refresh the token. No more infinite refresh loop.
+    const refreshToken = tokenStore.get()?.refresh_token;
 
-  try{
-    const resp = await axios.post<RefreshRequest,  AxiosResponse<LoginResponse>>(BASE_URL+'/refresh', {refreshToken});
-    console.log(resp);
-      localStorage.setItem("access_token", resp.data.accessToken);
-      localStorage.setItem("refresh_token", resp.data.refreshToken);
-      console.log("return right")
+    if(!refreshToken){
+      return Promise.reject(error);
+    }
+
+    try {
+      const resp = await axios.post<RefreshRequest, AxiosResponse<LoginResponse>>(BASE_URL + "/refresh", { refreshToken });
+
+      tokenStore.set(resp.data.accessToken, resp.data.refreshToken);
+     
       return $api(config);
-  }catch(error){
-    return Promise.reject(error)
-  }
-})
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  },
+);
 
 export default $api;
-
