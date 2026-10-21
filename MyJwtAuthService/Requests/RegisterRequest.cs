@@ -6,15 +6,15 @@ namespace MyJwtAuthService.Requests
     {
         [Required]
         [EmailAddress]
-        public required string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Required]
-        public required string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
         [Required]
-        public  required string Password { get; set; }
+        public  string Password { get; set; } = string.Empty;
 
         [Required]
-        public required string ConfirmPassword { get; set; }
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

@@ -39,11 +39,7 @@ namespace MyJwtAuthService.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest registerRequest)
         {
-            if(!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
+           
             if (registerRequest.Password != registerRequest.ConfirmPassword)
             {
                 throw new BadRequestException("Password does not match confirm password.");
@@ -77,11 +73,6 @@ namespace MyJwtAuthService.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            if(!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             ApplicationUser? user = await _userRepository.FindByNameAsync(loginRequest.Username);
             if(user == null)
             {
@@ -110,13 +101,6 @@ namespace MyJwtAuthService.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest refreshRequest)
         {
-            Console.WriteLine(refreshRequest.RefreshToken);
-            
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             bool isValidRefreshToken = _refreshTokenValidator.Validate(refreshRequest.RefreshToken);
             if(!isValidRefreshToken)
             {
