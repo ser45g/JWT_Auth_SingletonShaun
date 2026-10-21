@@ -15,7 +15,7 @@ namespace MyJwtAuthService.Controllers
 {
     [ApiController]
     [Route("auth")]
-    public class AuthenticationController : Controller
+    public class AuthenticationController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userRepository;
         private readonly Authenticator _authenticator;
